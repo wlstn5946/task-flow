@@ -9,15 +9,18 @@ interface Props {
 
 export function Board({ tasks, actions }: Props) {
   return (
-    <div className="board">
-      {STATUSES.map((status) => (
-        <Column
-          key={status}
-          status={status}
-          tasks={tasks.filter((task) => task.status === status)}
-          actions={actions}
-        />
-      ))}
-    </div>
+    <>
+      {tasks.length === 0 && <p className="empty">비어 있습니다.</p>}
+      <div className="board">
+        {STATUSES.map((status) => (
+          <Column
+            key={status}
+            status={status}
+            tasks={tasks.filter((task) => task.status === status)}
+            actions={actions}
+          />
+        ))}
+      </div>
+    </>
   )
 }

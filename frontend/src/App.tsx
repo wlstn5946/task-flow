@@ -12,19 +12,32 @@ import { TaskDialog } from './components/TaskDialog'
 import type { TaskActions } from './components/TaskCard'
 import type { NewTask, Status, Task } from './types'
 
+type LoadState = 'loading' | 'ready' | 'failed'
+
 function App() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
   const [deleting, setDeleting] = useState<Task | null>(null)
   const [actionError, setActionError] = useState('')
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+
+  function load() {
+    listTasks()
+      .then((loaded) => {
+        setTasks(loaded)
+        setLoadState('ready')
+      })
+      .catch(() => setLoadState('failed'))
+  }
+
+  function retry() {
+    setLoadState('loading')
+    load()
+  }
 
   useEffect(() => {
-    listTasks()
-      .then(setTasks)
-      .catch(() => {
-        // 불러오기 실패 화면은 이슈 #4 에서 다룬다.
-      })
+    load()
   }, [])
 
   async function handleCreate(task: NewTask) {
@@ -71,12 +84,25 @@ function App() {
     <main>
       <header className="app-header">
         <h1>task-flow</h1>
-        <button type="button" onClick={() => setCreating(true)}>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          disabled={loadState !== 'ready'}
+        >
           생성
         </button>
       </header>
       {actionError && <p className="error">{actionError}</p>}
-      <Board tasks={tasks} actions={actions} />
+      {loadState === 'loading' && <p role="status">불러오는 중...</p>}
+      {loadState === 'failed' && (
+        <div role="alert">
+          <p className="error">Task 를 불러오지 못했습니다.</p>
+          <button type="button" onClick={retry}>
+            다시 시도
+          </button>
+        </div>
+      )}
+      {loadState === 'ready' && <Board tasks={tasks} actions={actions} />}
       {creating && (
         <TaskDialog
           onCancel={() => setCreating(false)}
