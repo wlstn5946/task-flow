@@ -1,4 +1,4 @@
-import type { NewTask, Task } from './types'
+import type { NewTask, Status, Task } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -17,4 +17,11 @@ export function listTasks(): Promise<Task[]> {
 
 export function createTask(task: NewTask): Promise<Task> {
   return request<Task>('/tasks', { method: 'POST', body: JSON.stringify(task) })
+}
+
+export function updateTaskStatus(id: number, status: Status): Promise<Task> {
+  return request<Task>(`/tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
 }

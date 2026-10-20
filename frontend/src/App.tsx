@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { createTask, listTasks } from './api'
+import { createTask, listTasks, updateTaskStatus } from './api'
 import { Board } from './components/Board'
 import { TaskDialog } from './components/TaskDialog'
-import type { NewTask, Task } from './types'
+import type { NewTask, Status, Task } from './types'
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [creating, setCreating] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     listTasks()
@@ -22,6 +23,17 @@ function App() {
     setCreating(false)
   }
 
+  async function handleChangeStatus(id: number, status: Status) {
+    try {
+      // 서버가 확인해 돌려준 Task 로만 화면을 바꾼다.
+      const updated = await updateTaskStatus(id, status)
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      setActionError('')
+    } catch {
+      setActionError('상태를 바꾸지 못했습니다. 다시 시도해 주세요.')
+    }
+  }
+
   return (
     <main>
       <header className="app-header">
@@ -30,7 +42,8 @@ function App() {
           생성
         </button>
       </header>
-      <Board tasks={tasks} />
+      {actionError && <p className="error">{actionError}</p>}
+      <Board tasks={tasks} onChangeStatus={handleChangeStatus} />
       {creating && (
         <TaskDialog
           onCancel={() => setCreating(false)}

@@ -30,6 +30,12 @@ class TaskCreate(BaseModel):
     _check_title = field_validator("title")(validate_title)
 
 
+class TaskUpdate(BaseModel):
+    """상태 변경. 제목·설명 수정은 이후 이슈에서 이 모델을 넓힌다."""
+
+    status: Status
+
+
 class Task(BaseModel):
     id: int
     title: str

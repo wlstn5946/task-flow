@@ -1,7 +1,12 @@
-import { STATUSES, type Task } from '../types'
+import { STATUSES, type Status, type Task } from '../types'
 import { Column } from './Column'
 
-export function Board({ tasks }: { tasks: Task[] }) {
+interface Props {
+  tasks: Task[]
+  onChangeStatus: (id: number, status: Status) => void
+}
+
+export function Board({ tasks, onChangeStatus }: Props) {
   return (
     <div className="board">
       {STATUSES.map((status) => (
@@ -9,6 +14,7 @@ export function Board({ tasks }: { tasks: Task[] }) {
           key={status}
           status={status}
           tasks={tasks.filter((task) => task.status === status)}
+          onChangeStatus={onChangeStatus}
         />
       ))}
     </div>

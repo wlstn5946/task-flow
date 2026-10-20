@@ -66,12 +66,26 @@ button:disabled {
 
 .task-card {
   box-sizing: border-box;
+  flex-shrink: 0;
   height: var(--card-height);
   display: flex;
   align-items: center;
-  padding: 0 0.75rem;
+  gap: 0.4rem;
+  padding: 0 0.5rem 0 0.75rem;
   border: 1px solid #ccc;
   background: #fff;
+  cursor: grab;
+}
+
+.task-card button {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.task-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

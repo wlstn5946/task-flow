@@ -2,10 +2,10 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.db import get_conn
-from app.models import Task, TaskCreate
+from app.models import Task, TaskCreate, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -33,4 +33,17 @@ def create_task(body: TaskCreate, conn: Conn) -> Task:
             (body.title, body.description, body.status.value, now, now),
         )
     row = conn.execute("SELECT * FROM tasks WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return Task(**row)
+
+
+@router.patch("/{task_id}", response_model=Task)
+def update_task(task_id: int, body: TaskUpdate, conn: Conn) -> Task:
+    with conn:
+        cur = conn.execute(
+            "UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?",
+            (body.status.value, _now(), task_id),
+        )
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Task 를 찾을 수 없습니다.")
+    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
     return Task(**row)
