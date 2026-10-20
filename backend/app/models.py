@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 TITLE_MAX_LENGTH = 30
 
@@ -31,9 +31,27 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    """상태 변경. 제목·설명 수정은 이후 이슈에서 이 모델을 넓힌다."""
+    """보낸 항목만 바꾼다. 설명을 비우려면 빈 문자열을 보낸다."""
 
-    status: Status
+    title: str | None = None
+    description: str | None = None
+    status: Status | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _check_title(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("제목은 비워 둘 수 없습니다.")
+        return validate_title(value)
+
+    @model_validator(mode="after")
+    def _check_fields(self) -> "TaskUpdate":
+        if not self.model_fields_set:
+            raise ValueError("바꿀 항목이 없습니다.")
+        for name in self.model_fields_set:
+            if getattr(self, name) is None:
+                raise ValueError(f"{name} 에는 null 을 보낼 수 없습니다.")
+        return self
 
 
 class Task(BaseModel):

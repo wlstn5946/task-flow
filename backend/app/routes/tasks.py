@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.db import get_conn
-from app.models import Task, TaskCreate, TaskUpdate
+from app.models import Status, Task, TaskCreate, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -38,12 +38,27 @@ def create_task(body: TaskCreate, conn: Conn) -> Task:
 
 @router.patch("/{task_id}", response_model=Task)
 def update_task(task_id: int, body: TaskUpdate, conn: Conn) -> Task:
+    # 보낸 항목만 바꾼다. 컬럼 이름은 모델 필드에서만 오므로 SQL 에 안전하다.
+    changes = {
+        name: value.value if isinstance(value, Status) else value
+        for name in body.model_fields_set
+        if (value := getattr(body, name)) is not None
+    }
+    assignments = ", ".join(f"{name} = ?" for name in changes)
     with conn:
         cur = conn.execute(
-            "UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?",
-            (body.status.value, _now(), task_id),
+            f"UPDATE tasks SET {assignments}, updated_at = ? WHERE id = ?",
+            (*changes.values(), _now(), task_id),
         )
     if cur.rowcount == 0:
         raise HTTPException(status_code=404, detail="Task 를 찾을 수 없습니다.")
     row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
     return Task(**row)
+
+
+@router.delete("/{task_id}", status_code=204)
+def delete_task(task_id: int, conn: Conn) -> None:
+    with conn:
+        cur = conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Task 를 찾을 수 없습니다.")

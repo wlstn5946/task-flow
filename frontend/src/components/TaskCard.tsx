@@ -1,17 +1,23 @@
 import { useState } from 'react'
 import { STATUSES, STATUS_LABEL, type Status, type Task } from '../types'
 
-interface Props {
-  task: Task
-  onChangeStatus: (id: number, status: Status) => void
+export interface TaskActions {
+  changeStatus: (id: number, status: Status) => void
+  edit: (task: Task) => void
+  remove: (task: Task) => void
 }
 
-export function TaskCard({ task, onChangeStatus }: Props) {
+interface Props {
+  task: Task
+  actions: TaskActions
+}
+
+export function TaskCard({ task, actions }: Props) {
   const [choosing, setChoosing] = useState(false)
 
   function choose(status: Status) {
     setChoosing(false)
-    onChangeStatus(task.id, status)
+    actions.changeStatus(task.id, status)
   }
 
   return (
@@ -21,15 +27,23 @@ export function TaskCard({ task, onChangeStatus }: Props) {
       onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
     >
       <span className="task-title">{task.title}</span>
-      {choosing &&
-        STATUSES.filter((s) => s !== task.status).map((s) => (
-          <button key={s} type="button" onClick={() => choose(s)}>
-            {STATUS_LABEL[s]}
-          </button>
-        ))}
-      <button type="button" onClick={() => setChoosing((v) => !v)}>
-        상태 변경
-      </button>
+      <div className="task-actions">
+        {choosing &&
+          STATUSES.filter((s) => s !== task.status).map((s) => (
+            <button key={s} type="button" onClick={() => choose(s)}>
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        <button type="button" onClick={() => setChoosing((v) => !v)}>
+          상태 변경
+        </button>
+        <button type="button" onClick={() => actions.edit(task)}>
+          수정
+        </button>
+        <button type="button" onClick={() => actions.remove(task)}>
+          삭제
+        </button>
+      </div>
     </li>
   )
 }

@@ -19,6 +19,23 @@ export function createTask(task: NewTask): Promise<Task> {
   return request<Task>('/tasks', { method: 'POST', body: JSON.stringify(task) })
 }
 
+export function updateTaskContent(
+  id: number,
+  content: { title: string; description: string },
+): Promise<Task> {
+  return request<Task>(`/tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(content),
+  })
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(`요청 실패 (${res.status})`)
+  }
+}
+
 export function updateTaskStatus(id: number, status: Status): Promise<Task> {
   return request<Task>(`/tasks/${id}`, {
     method: 'PATCH',

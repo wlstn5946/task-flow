@@ -52,7 +52,7 @@ button:disabled {
 
 /* 열마다 Task 10개가 보이고 넘치면 열 안에서 스크롤한다. (Q-07) */
 .column-list {
-  --card-height: 2.75rem;
+  --card-height: 4.75rem;
   --card-gap: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -69,26 +69,32 @@ button:disabled {
   flex-shrink: 0;
   height: var(--card-height);
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0 0.5rem 0 0.75rem;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
   border: 1px solid #ccc;
   background: #fff;
   cursor: grab;
 }
 
-.task-card button {
-  flex-shrink: 0;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.8rem;
-}
-
 .task-title {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.task-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.task-actions button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
 }
 
 .overlay {
