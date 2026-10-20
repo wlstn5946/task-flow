@@ -1,0 +1,36 @@
+import { STATUS_LABEL, type Status, type Task } from '../types'
+import { TaskCard, type TaskActions } from './TaskCard'
+
+interface Props {
+  status: Status
+  tasks: Task[]
+  actions: TaskActions
+}
+
+export function Column({ status, tasks, actions }: Props) {
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const id = Number(e.dataTransfer.getData('text/plain'))
+    const dropped = tasks.some((task) => task.id === id)
+    // 같은 열에 놓으면 아무것도 바꾸지 않는다.
+    if (Number.isInteger(id) && !dropped) {
+      actions.changeStatus(id, status)
+    }
+  }
+
+  return (
+    <section
+      className="column"
+      aria-label={STATUS_LABEL[status]}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
+      <h2>{STATUS_LABEL[status]}</h2>
+      <ul className="column-list">
+        {tasks.map((task) => (
+          <TaskCard key={task.id} task={task} actions={actions} />
+        ))}
+      </ul>
+    </section>
+  )
+}

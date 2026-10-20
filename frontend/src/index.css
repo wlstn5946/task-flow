@@ -4,7 +4,140 @@ body {
 }
 
 main {
-  max-width: 720px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 2rem 1rem;
+}
+
+button {
+  padding: 0.4rem 1rem;
+  border: 1px solid #444;
+  border-radius: 0;
+  background: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.column {
+  border: 1px solid #ccc;
+  padding: 0.75rem;
+  background: #fafafa;
+}
+
+.column h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+/* 열마다 Task 10개가 보이고 넘치면 열 안에서 스크롤한다. (Q-07) */
+.column-list {
+  --card-height: 4.75rem;
+  --card-gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: calc(10 * var(--card-height) + 9 * var(--card-gap));
+  overflow-y: auto;
+}
+
+.task-card {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: var(--card-height);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: grab;
+}
+
+.task-title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.task-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.task-actions button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(420px, calc(100vw - 2rem));
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dialog textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.empty {
+  margin: 0 0 1rem;
+  color: #666;
+}
+
+.error {
+  margin: 0;
+  color: #b00020;
 }
