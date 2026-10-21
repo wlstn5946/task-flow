@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { STATUSES, STATUS_LABEL, type Status, type Task } from '../types'
 
 export interface TaskActions {
@@ -13,13 +12,6 @@ interface Props {
 }
 
 export function TaskCard({ task, actions }: Props) {
-  const [choosing, setChoosing] = useState(false)
-
-  function choose(status: Status) {
-    setChoosing(false)
-    actions.changeStatus(task.id, status)
-  }
-
   return (
     <li
       className="task-card"
@@ -28,15 +20,17 @@ export function TaskCard({ task, actions }: Props) {
     >
       <span className="task-title">{task.title}</span>
       <div className="task-actions">
-        {choosing &&
-          STATUSES.filter((s) => s !== task.status).map((s) => (
-            <button key={s} type="button" onClick={() => choose(s)}>
+        <select
+          aria-label="상태"
+          value={task.status}
+          onChange={(e) => actions.changeStatus(task.id, e.target.value as Status)}
+        >
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
               {STATUS_LABEL[s]}
-            </button>
+            </option>
           ))}
-        <button type="button" onClick={() => setChoosing((v) => !v)}>
-          상태 변경
-        </button>
+        </select>
         <button type="button" onClick={() => actions.edit(task)}>
           수정
         </button>

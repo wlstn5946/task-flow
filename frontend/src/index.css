@@ -92,9 +92,17 @@ button:disabled {
   gap: 0.3rem;
 }
 
-.task-actions button {
+.task-actions button,
+.task-actions select {
   padding: 0.15rem 0.5rem;
   font-size: 0.8rem;
+}
+
+.task-actions select {
+  border: 1px solid #444;
+  border-radius: 0;
+  background: #fff;
+  cursor: pointer;
 }
 
 .overlay {
