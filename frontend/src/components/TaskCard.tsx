@@ -1,5 +1,17 @@
-import { useState } from 'react'
-import { STATUSES, STATUS_LABEL, type Status, type Task } from '../types'
+import {
+  DESCRIPTION_PREVIEW_LENGTH,
+  STATUSES,
+  STATUS_LABEL,
+  type Status,
+  type Task,
+} from '../types'
+
+// 줄바꿈은 공백으로 이어 한 줄로 만들고, 글자 수를 넘으면 … 으로 줄인다.
+function previewDescription(description: string): string {
+  const chars = Array.from(description.replace(/\s+/g, ' ').trim())
+  if (chars.length <= DESCRIPTION_PREVIEW_LENGTH) return chars.join('')
+  return chars.slice(0, DESCRIPTION_PREVIEW_LENGTH).join('') + '…'
+}
 
 export interface TaskActions {
   changeStatus: (id: number, status: Status) => void
@@ -13,30 +25,30 @@ interface Props {
 }
 
 export function TaskCard({ task, actions }: Props) {
-  const [choosing, setChoosing] = useState(false)
-
-  function choose(status: Status) {
-    setChoosing(false)
-    actions.changeStatus(task.id, status)
-  }
-
   return (
     <li
       className="task-card"
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
     >
-      <span className="task-title">{task.title}</span>
+      <div className="task-text">
+        <span className="task-title">{task.title}</span>
+        <span className="task-description">
+          {previewDescription(task.description)}
+        </span>
+      </div>
       <div className="task-actions">
-        {choosing &&
-          STATUSES.filter((s) => s !== task.status).map((s) => (
-            <button key={s} type="button" onClick={() => choose(s)}>
+        <select
+          aria-label="상태"
+          value={task.status}
+          onChange={(e) => actions.changeStatus(task.id, e.target.value as Status)}
+        >
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
               {STATUS_LABEL[s]}
-            </button>
+            </option>
           ))}
-        <button type="button" onClick={() => setChoosing((v) => !v)}>
-          상태 변경
-        </button>
+        </select>
         <button type="button" onClick={() => actions.edit(task)}>
           수정
         </button>
