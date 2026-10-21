@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, field_validator, model_validator
 
-TITLE_MAX_LENGTH = 30
+TITLE_MAX_LENGTH = 20
 
 
 class Status(StrEnum):

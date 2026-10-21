@@ -1,4 +1,17 @@
-import { STATUSES, STATUS_LABEL, type Status, type Task } from '../types'
+import {
+  DESCRIPTION_PREVIEW_LENGTH,
+  STATUSES,
+  STATUS_LABEL,
+  type Status,
+  type Task,
+} from '../types'
+
+// 줄바꿈은 공백으로 이어 한 줄로 만들고, 글자 수를 넘으면 … 으로 줄인다.
+function previewDescription(description: string): string {
+  const chars = Array.from(description.replace(/\s+/g, ' ').trim())
+  if (chars.length <= DESCRIPTION_PREVIEW_LENGTH) return chars.join('')
+  return chars.slice(0, DESCRIPTION_PREVIEW_LENGTH).join('') + '…'
+}
 
 export interface TaskActions {
   changeStatus: (id: number, status: Status) => void
@@ -18,7 +31,12 @@ export function TaskCard({ task, actions }: Props) {
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
     >
-      <span className="task-title">{task.title}</span>
+      <div className="task-text">
+        <span className="task-title">{task.title}</span>
+        <span className="task-description">
+          {previewDescription(task.description)}
+        </span>
+      </div>
       <div className="task-actions">
         <select
           aria-label="상태"
