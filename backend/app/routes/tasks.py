@@ -42,12 +42,12 @@ def update_task(task_id: int, body: TaskUpdate, conn: Conn) -> Task:
     changes = {
         name: value.value if isinstance(value, Status) else value
         for name in body.model_fields_set
-        if name != "status" and (value := getattr(body, name)) is not None
+        if (value := getattr(body, name)) is not None
     }
-    assignments = ", ".join([*(f"{name} = ?" for name in changes), "updated_at = ?"])
+    assignments = ", ".join(f"{name} = ?" for name in changes)
     with conn:
         cur = conn.execute(
-            f"UPDATE tasks SET {assignments} WHERE id = ?",
+            f"UPDATE tasks SET {assignments}, updated_at = ? WHERE id = ?",
             (*changes.values(), _now(), task_id),
         )
     if cur.rowcount == 0:
