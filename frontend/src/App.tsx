@@ -54,9 +54,9 @@ function App() {
   }
 
   async function handleChangeStatus(id: number, status: Status) {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
     try {
-      await updateTaskStatus(id, status)
+      const updated = await updateTaskStatus(id, status)
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
       setActionError('')
     } catch {
       setActionError('상태를 바꾸지 못했습니다. 다시 시도해 주세요.')
