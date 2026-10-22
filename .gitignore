@@ -30,3 +30,8 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# 환경 변수 (비밀값은 Git 에 넣지 않는다)
+.env
+.env.*
+!.env.example
