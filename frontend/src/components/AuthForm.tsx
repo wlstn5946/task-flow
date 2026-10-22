@@ -68,7 +68,26 @@ export function AuthForm({ onLoggedIn }: Props) {
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
-      <h2>{mode === 'login' ? '로그인' : '가입'}</h2>
+      <div className="auth-tabs">
+        <button
+          type="button"
+          className={mode === 'login' ? 'active' : ''}
+          aria-pressed={mode === 'login'}
+          onClick={() => switchMode('login')}
+          disabled={submitting}
+        >
+          로그인
+        </button>
+        <button
+          type="button"
+          className={mode === 'register' ? 'active' : ''}
+          aria-pressed={mode === 'register'}
+          onClick={() => switchMode('register')}
+          disabled={submitting}
+        >
+          가입
+        </button>
+      </div>
       <label>
         아이디
         <input
@@ -94,13 +113,6 @@ export function AuthForm({ onLoggedIn }: Props) {
         </p>
       )}
       <div className="dialog-actions">
-        <button
-          type="button"
-          onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-          disabled={submitting}
-        >
-          {mode === 'login' ? '가입' : '로그인'}
-        </button>
         <button type="submit" disabled={submitting}>
           {mode === 'login' ? '로그인' : '가입'}
         </button>

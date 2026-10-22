@@ -51,8 +51,14 @@ button:disabled {
   margin: 2rem auto;
 }
 
-.auth-form h2 {
-  margin: 0;
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.auth-tabs button.active {
+  background: #444;
+  color: #fff;
 }
 
 .auth-form label {
