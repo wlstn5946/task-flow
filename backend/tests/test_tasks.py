@@ -1,12 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.db import migrate
 from app.main import app
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("TASKFLOW_DB", str(tmp_path / "test.db"))
+    # 단위 3(Task 보호) 전까지 Task API 는 주인을 모른다. owner_id 가 NOT NULL 이 되기 전 구조로 만든다.
+    migrate("0002")
     with TestClient(app) as c:
         yield c
 
