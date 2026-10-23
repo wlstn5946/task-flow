@@ -1,4 +1,20 @@
-import type { NewTask, Status, Task } from './types'
+import type { Credentials, NewTask, Status, Task, User } from './types'
+
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number) {
+    super(`요청 실패 (${status})`)
+    this.status = status
+  }
+}
+
+// 로그인이 풀렸거나 만료된 응답(401)을 받으면 화면이 로그인 화면으로 돌아가게 알린다.
+let unauthorizedHandler: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -6,9 +22,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
   })
   if (!res.ok) {
-    throw new Error(`요청 실패 (${res.status})`)
+    // 로그인 실패(401)는 로그인이 풀린 것이 아니므로 제외한다.
+    if (res.status === 401 && path !== '/auth/login') {
+      unauthorizedHandler?.()
+    }
+    throw new ApiError(res.status)
+  }
+  if (res.status === 204) {
+    return undefined as T
   }
   return (await res.json()) as T
+}
+
+export function register(credentials: Credentials): Promise<User> {
+  return request<User>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
+}
+
+export function login(credentials: Credentials): Promise<User> {
+  return request<User>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
+}
+
+export function logout(): Promise<void> {
+  return request<void>('/auth/logout', { method: 'POST' })
+}
+
+export function fetchMe(): Promise<User> {
+  return request<User>('/auth/me')
 }
 
 export function listTasks(): Promise<Task[]> {
@@ -29,11 +74,8 @@ export function updateTaskContent(
   })
 }
 
-export async function deleteTask(id: number): Promise<void> {
-  const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
-  if (!res.ok) {
-    throw new Error(`요청 실패 (${res.status})`)
-  }
+export function deleteTask(id: number): Promise<void> {
+  return request<void>(`/tasks/${id}`, { method: 'DELETE' })
 }
 
 export function updateTaskStatus(id: number, status: Status): Promise<Task> {

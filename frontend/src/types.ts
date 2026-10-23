@@ -14,6 +14,16 @@ export const TITLE_MAX_LENGTH = 20
 // 카드에 보이는 설명의 최대 글자 수. 넘으면 … 으로 줄인다.
 export const DESCRIPTION_PREVIEW_LENGTH = 30
 
+export interface User {
+  id: number
+  username: string
+}
+
+export interface Credentials {
+  username: string
+  password: string
+}
+
 export interface Task {
   id: number
   title: string
