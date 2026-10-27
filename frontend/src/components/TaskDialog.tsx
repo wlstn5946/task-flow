@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import {
+  PRIORITIES,
+  PRIORITY_LABEL,
   STATUSES,
   STATUS_LABEL,
   TITLE_MAX_LENGTH,
   type NewTask,
+  type Priority,
   type Status,
   type Task,
 } from '../types'
@@ -20,6 +23,9 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
   const [title, setTitle] = useState(task?.title ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
   const [status, setStatus] = useState<Status>(task?.status ?? 'TODO')
+  const [priority, setPriority] = useState<Priority>(task?.priority ?? 'NORMAL')
+  // 날짜 입력은 마감일이 없으면 빈 글자이다.
+  const [dueDate, setDueDate] = useState(task?.due_date ?? '')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -33,7 +39,13 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
     setError('')
     setSubmitting(true)
     try {
-      await onSubmit({ title: title.trim(), description, status })
+      await onSubmit({
+        title: title.trim(),
+        description,
+        status,
+        priority,
+        due_date: dueDate === '' ? null : dueDate,
+      })
     } catch {
       setError(
         editing
@@ -67,6 +79,27 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <label>
+          우선순위
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as Priority)}
+          >
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {PRIORITY_LABEL[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          마감일 (선택)
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
           />
         </label>
         {!editing && (

@@ -86,7 +86,7 @@ button:disabled {
 
 /* 열마다 Task 10개가 보이고 넘치면 열 안에서 스크롤한다. (Q-07) */
 .column-list {
-  --card-height: 6.25rem;
+  --card-height: 7.5rem;
   --card-gap: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -131,6 +131,40 @@ button:disabled {
   min-height: 1.1rem;
   font-size: 0.8rem;
   color: #666;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #444;
+  white-space: nowrap;
+}
+
+.priority {
+  padding: 0 0.4rem;
+  border: 1px solid #888;
+}
+
+.priority-high {
+  border-color: #444;
+  background: #444;
+  color: #fff;
+}
+
+.priority-low {
+  color: #666;
+  border-style: dashed;
+}
+
+/* 기한 초과는 색만으로 알리지 않는다. 굵은 테두리와 '기한 초과' 글자를 함께 쓴다. (R-011) */
+.task-card.overdue {
+  border: 2px solid #b00020;
+}
+
+.overdue-badge {
+  color: #b00020;
 }
 
 .task-actions {
