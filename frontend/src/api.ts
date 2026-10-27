@@ -1,4 +1,11 @@
-import type { Credentials, NewTask, Status, Task, User } from './types'
+import type {
+  Credentials,
+  NewTask,
+  Status,
+  Task,
+  TaskChanges,
+  User,
+} from './types'
 
 export class ApiError extends Error {
   status: number
@@ -64,13 +71,10 @@ export function createTask(task: NewTask): Promise<Task> {
   return request<Task>('/tasks', { method: 'POST', body: JSON.stringify(task) })
 }
 
-export function updateTaskContent(
-  id: number,
-  content: { title: string; description: string },
-): Promise<Task> {
+export function updateTask(id: number, changes: TaskChanges): Promise<Task> {
   return request<Task>(`/tasks/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify(content),
+    body: JSON.stringify(changes),
   })
 }
 

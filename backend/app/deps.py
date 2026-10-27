@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException
@@ -29,3 +30,11 @@ def current_user(
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
+
+
+def get_today() -> date:
+    """기한 초과를 판단하는 '오늘'. 서버 PC 의 로컬 날짜이다. 테스트에서는 바꿔 끼운다."""
+    return date.today()
+
+
+Today = Annotated[date, Depends(get_today)]

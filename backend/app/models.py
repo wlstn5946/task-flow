@@ -1,4 +1,5 @@
 import re
+from datetime import date
 from enum import StrEnum
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -14,6 +15,17 @@ class Status(StrEnum):
     DONE = "DONE"
 
 
+class Priority(StrEnum):
+    """우선순위 세 값의 정의는 여기 한 곳에만 둔다. 저장소의 CHECK 와 같은 값이다. (R-010)"""
+
+    LOW = "LOW"
+    NORMAL = "NORMAL"
+    HIGH = "HIGH"
+
+
+DUE_DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
 def validate_title(value: str) -> str:
     title = value.strip()
     if not title:
@@ -23,20 +35,42 @@ def validate_title(value: str) -> str:
     return title
 
 
+def validate_due_date(value: str | None) -> str | None:
+    """YYYY-MM-DD 날짜만 받는다. 없는 날짜(02-30)와 시각이 붙은 값은 거절한다. 지난 날짜는 괜찮다. (BR-2)"""
+    if value is None:
+        return None
+    if not DUE_DATE_PATTERN.fullmatch(value):
+        raise ValueError("마감일은 YYYY-MM-DD 형식입니다.")
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        raise ValueError("존재하지 않는 날짜입니다.") from None
+    return value
+
+
 class TaskCreate(BaseModel):
     title: str
     description: str = ""
     status: Status
+    priority: Priority = Priority.NORMAL
+    due_date: str | None = None
 
     _check_title = field_validator("title")(validate_title)
+    _check_due_date = field_validator("due_date")(validate_due_date)
+
+
+# 수정에서 null 을 보내 지울 수 있는 항목. 나머지는 null 이면 거절한다. (10-3)
+NULLABLE_ON_UPDATE = {"due_date"}
 
 
 class TaskUpdate(BaseModel):
-    """보낸 항목만 바꾼다. 설명을 비우려면 빈 문자열을 보낸다."""
+    """보낸 항목만 바꾼다. 설명을 비우려면 빈 문자열을, 마감일을 지우려면 null 을 보낸다."""
 
     title: str | None = None
     description: str | None = None
     status: Status | None = None
+    priority: Priority | None = None
+    due_date: str | None = None
 
     @field_validator("title")
     @classmethod
@@ -45,11 +79,13 @@ class TaskUpdate(BaseModel):
             raise ValueError("제목은 비워 둘 수 없습니다.")
         return validate_title(value)
 
+    _check_due_date = field_validator("due_date")(validate_due_date)
+
     @model_validator(mode="after")
     def _check_fields(self) -> "TaskUpdate":
         if not self.model_fields_set:
             raise ValueError("바꿀 항목이 없습니다.")
-        for name in self.model_fields_set:
+        for name in self.model_fields_set - NULLABLE_ON_UPDATE:
             if getattr(self, name) is None:
                 raise ValueError(f"{name} 에는 null 을 보낼 수 없습니다.")
         return self
@@ -103,5 +139,8 @@ class Task(BaseModel):
     title: str
     description: str
     status: Status
+    priority: Priority
+    due_date: str | None
+    is_overdue: bool
     created_at: str
     updated_at: str

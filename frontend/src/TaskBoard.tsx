@@ -4,14 +4,14 @@ import {
   deleteTask,
   listTasks,
   logout,
-  updateTaskContent,
+  updateTask,
   updateTaskStatus,
 } from './api'
 import { Board } from './components/Board'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TaskDialog } from './components/TaskDialog'
 import type { TaskActions } from './components/TaskCard'
-import type { NewTask, Status, Task, User } from './types'
+import type { NewTask, Status, Task, TaskChanges, User } from './types'
 
 type LoadState = 'loading' | 'ready' | 'failed'
 
@@ -55,17 +55,37 @@ function TaskBoard({ user, onLoggedOut }: Props) {
     }
   }
 
+  // 정렬과 기한 초과는 서버가 정한다. 바꾼 뒤에는 서버 순서를 다시 받아 온다. (R-012)
+  // 실패해도 이미 반영한 내용은 그대로 두고 다음에 불러올 때 맞춰진다.
+  function refreshOrder() {
+    listTasks()
+      .then(setTasks)
+      .catch(() => {})
+  }
+
   async function handleCreate(task: NewTask) {
     const created = await createTask(task)
     setTasks((prev) => [...prev, created])
     setCreating(false)
+    refreshOrder()
   }
 
-  async function handleEdit(task: Task, { title, description }: NewTask) {
+  async function handleEdit(task: Task, values: NewTask) {
+    // 바뀐 항목만 보낸다. 마감일은 사용자가 비웠을 때만 null 이 된다.
+    const changes: TaskChanges = {}
+    if (values.title !== task.title) changes.title = values.title
+    if (values.description !== task.description) changes.description = values.description
+    if (values.priority !== task.priority) changes.priority = values.priority
+    if (values.due_date !== task.due_date) changes.due_date = values.due_date
+    if (Object.keys(changes).length === 0) {
+      setEditing(null)
+      return
+    }
     // 서버가 확인해 돌려준 Task 로만 화면을 바꾼다. 실패하면 창에서 안내한다.
-    const updated = await updateTaskContent(task.id, { title, description })
+    const updated = await updateTask(task.id, changes)
     setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
     setEditing(null)
+    refreshOrder()
   }
 
   async function handleChangeStatus(id: number, status: Status) {
@@ -73,6 +93,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
       const updated = await updateTaskStatus(id, status)
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
       setActionError('')
+      refreshOrder()
     } catch {
       setActionError('상태를 바꾸지 못했습니다. 다시 시도해 주세요.')
     }

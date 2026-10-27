@@ -1,5 +1,6 @@
 import {
   DESCRIPTION_PREVIEW_LENGTH,
+  PRIORITY_LABEL,
   STATUSES,
   STATUS_LABEL,
   type Status,
@@ -27,7 +28,7 @@ interface Props {
 export function TaskCard({ task, actions }: Props) {
   return (
     <li
-      className="task-card"
+      className={task.is_overdue ? 'task-card overdue' : 'task-card'}
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
     >
@@ -35,6 +36,13 @@ export function TaskCard({ task, actions }: Props) {
         <span className="task-title">{task.title}</span>
         <span className="task-description">
           {previewDescription(task.description)}
+        </span>
+        <span className="task-meta">
+          <span className={`priority priority-${task.priority.toLowerCase()}`}>
+            {PRIORITY_LABEL[task.priority]}
+          </span>
+          <span>{task.due_date ? `마감 ${task.due_date}` : '마감일 없음'}</span>
+          {task.is_overdue && <strong className="overdue-badge">기한 초과</strong>}
         </span>
       </div>
       <div className="task-actions">
