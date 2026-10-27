@@ -110,7 +110,7 @@ def test_stops_and_changes_nothing_when_tasks_have_no_owner_and_no_user():
 def test_no_tasks_needs_no_user():
     migrate("head")
     assert query("SELECT count(*) FROM tasks") == [(0,)]
-    assert query("SELECT version_num FROM alembic_version") == [("0003",)]
+    assert query("SELECT version_num FROM alembic_version") == [("0004",)]
 
 
 def test_deleted_task_ids_are_not_reused():
@@ -126,3 +126,66 @@ def test_deleted_task_ids_are_not_reused():
     )
 
     assert query("SELECT max(id) FROM tasks") == [(4,)]
+
+
+def test_step_0004_gives_existing_tasks_normal_and_no_due_date():
+    migrate("0003")
+    run("INSERT INTO users (username, password_hash) VALUES ('a', 'h')")
+    run("INSERT INTO users (username, password_hash) VALUES ('b', 'h')")
+    for owner in (1, 1, 2):
+        run(
+            "INSERT INTO tasks (title, description, status, created_at, updated_at, owner_id)"
+            " VALUES ('t', 'd', 'DONE', 'c', 'u', ?)",
+            (owner,),
+        )
+    before = query(
+        "SELECT id, title, description, status, created_at, updated_at, owner_id"
+        " FROM tasks ORDER BY id"
+    )
+
+    migrate("head")
+
+    assert query(
+        "SELECT id, title, description, status, created_at, updated_at, owner_id"
+        " FROM tasks ORDER BY id"
+    ) == before
+    assert query("SELECT DISTINCT priority, due_date FROM tasks") == [("NORMAL", None)]
+    assert query("SELECT owner_id, count(*) FROM tasks GROUP BY owner_id") == [(1, 2), (2, 1)]
+    assert query("SELECT version_num FROM alembic_version") == [("0004",)]
+
+
+def test_step_0004_keeps_index_and_id_sequence():
+    migrate("0003")
+    run("INSERT INTO users (username, password_hash) VALUES ('a', 'h')")
+    for _ in range(3):
+        run(
+            "INSERT INTO tasks (title, description, status, created_at, updated_at, owner_id)"
+            " VALUES ('t', '', 'TODO', 'c', 'u', 1)"
+        )
+    run("DELETE FROM tasks WHERE id = 3")
+
+    migrate("head")
+    run(
+        "INSERT INTO tasks (title, description, status, created_at, updated_at, owner_id)"
+        " VALUES ('new', '', 'TODO', 'c', 'u', 1)"
+    )
+
+    assert query("SELECT max(id) FROM tasks") == [(4,)]
+    assert query(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_tasks_owner_id'"
+    ) == [("idx_tasks_owner_id",)]
+
+
+def test_new_columns_reject_values_outside_the_rules():
+    migrate("head")
+    run("INSERT INTO users (username, password_hash) VALUES ('u', 'h')")
+    insert = (
+        "INSERT INTO tasks (title, description, status, created_at, updated_at, owner_id,"
+        " priority, due_date) VALUES ('t', '', 'TODO', 'c', 'u', 1, ?, ?)"
+    )
+    run(insert, ("HIGH", "2020-01-01"))  # 지난 날짜도 쓸 수 있다.
+    run(insert, ("LOW", None))
+    for priority, due_date in (("URGENT", None), (None, None), ("NORMAL", "2026-02-30"), ("NORMAL", "10/20")):
+        with pytest.raises(sqlite3.IntegrityError):
+            run(insert, (priority, due_date))
+    assert query("SELECT count(*) FROM tasks") == [(2,)]
