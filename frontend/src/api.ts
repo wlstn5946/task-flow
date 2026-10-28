@@ -2,6 +2,8 @@ import type {
   Credentials,
   NewTask,
   Status,
+  SuggestRequest,
+  Suggestion,
   Task,
   TaskChanges,
   User,
@@ -69,6 +71,14 @@ export function listTasks(): Promise<Task[]> {
 
 export function createTask(task: NewTask): Promise<Task> {
   return request<Task>('/tasks', { method: 'POST', body: JSON.stringify(task) })
+}
+
+/** 제안만 받는다. 서버는 저장하지 않는다. 실패는 ApiError(502 제안 실패 · 503 AI 꺼짐 또는 바쁨)이다. */
+export function suggestTask(body: SuggestRequest): Promise<Suggestion> {
+  return request<Suggestion>('/tasks/suggest', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }
 
 export function updateTask(id: number, changes: TaskChanges): Promise<Task> {

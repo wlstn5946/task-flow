@@ -4,8 +4,16 @@ from enum import StrEnum
 
 from fastapi import APIRouter, HTTPException
 
+from app import ai
 from app.deps import Conn, CurrentUser, Today
-from app.models import Status, Task, TaskCreate, TaskUpdate
+from app.models import (
+    Status,
+    SuggestRequest,
+    Suggestion,
+    Task,
+    TaskCreate,
+    TaskUpdate,
+)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -49,6 +57,12 @@ def list_tasks(conn: Conn, user: CurrentUser, today: Today) -> list[Task]:
         {"owner_id": user.id, "today": today.isoformat()},
     ).fetchall()
     return [_to_task(row, today) for row in rows]
+
+
+@router.post("/suggest", response_model=Suggestion)
+def suggest_task(body: SuggestRequest, user: CurrentUser, today: Today) -> Suggestion:
+    # 제안만 돌려주고 저장소는 건드리지 않는다. 로그인 확인은 CurrentUser 가 먼저 한다.
+    return ai.suggest(body.title, body.description, today)
 
 
 @router.post("", response_model=Task, status_code=201)

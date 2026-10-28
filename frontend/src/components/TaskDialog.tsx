@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { ApiError, suggestTask } from '../api'
 import {
   PRIORITIES,
   PRIORITY_LABEL,
@@ -18,6 +19,9 @@ interface Props {
   onSubmit: (task: NewTask) => Promise<void>
 }
 
+const SUGGEST_UNAVAILABLE = '지금은 AI 제안을 쓸 수 없습니다. 직접 입력해 주세요.'
+const SUGGEST_FAILED = '제안을 못 받았습니다. 다시 제안 버튼을 눌러 보세요.'
+
 export function TaskDialog({ task, onCancel, onSubmit }: Props) {
   const editing = task !== undefined
   const [title, setTitle] = useState(task?.title ?? '')
@@ -28,6 +32,49 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
   const [dueDate, setDueDate] = useState(task?.due_date ?? '')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // AI 제안은 칸을 채우기만 한다. 저장은 [생성]/[저장] 이 따로 한다.
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestMessage, setSuggestMessage] = useState('')
+  const [reason, setReason] = useState('')
+  // 요청마다 번호를 매겨, 저장을 누른 뒤나 창이 닫힌 뒤에 늦게 온 응답은 버린다.
+  const suggestSeq = useRef(0)
+
+  useEffect(() => {
+    return () => {
+      suggestSeq.current += 1
+    }
+  }, [])
+
+  async function handleSuggest() {
+    if (title.trim() === '') {
+      setReason('')
+      setSuggestMessage('제목을 입력해 주세요.')
+      return
+    }
+    suggestSeq.current += 1
+    const seq = suggestSeq.current
+    setSuggesting(true)
+    setSuggestMessage('')
+    setReason('')
+    try {
+      const suggestion = await suggestTask({ title: title.trim(), description })
+      if (seq !== suggestSeq.current) return
+      // 모르는 값이 오면 칸을 바꾸지 않고 실패로 본다.
+      if (!PRIORITIES.includes(suggestion.priority)) {
+        throw new Error('알 수 없는 우선순위')
+      }
+      setPriority(suggestion.priority)
+      setDueDate(suggestion.due_date ?? '')
+      setReason(suggestion.reason)
+    } catch (e) {
+      if (seq !== suggestSeq.current) return
+      setSuggestMessage(
+        e instanceof ApiError && e.status === 503 ? SUGGEST_UNAVAILABLE : SUGGEST_FAILED,
+      )
+    } finally {
+      if (seq === suggestSeq.current) setSuggesting(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -37,6 +84,9 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
       return
     }
     setError('')
+    // 제안이 아직 오는 중이어도 저장은 막지 않는다. 늦게 온 제안은 버린다.
+    suggestSeq.current += 1
+    setSuggesting(false)
     setSubmitting(true)
     try {
       await onSubmit({
@@ -81,6 +131,17 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
+        <div className="suggest-row">
+          <button type="button" onClick={handleSuggest} disabled={suggesting}>
+            AI 제안
+          </button>
+          {suggesting && (
+            <span className="suggest-status" role="status">
+              제안을 받는 중...
+            </span>
+          )}
+        </div>
+        {suggestMessage && <p className="error">{suggestMessage}</p>}
         <label>
           우선순위
           <select
@@ -102,6 +163,11 @@ export function TaskDialog({ task, onCancel, onSubmit }: Props) {
             onChange={(e) => setDueDate(e.target.value)}
           />
         </label>
+        {reason && (
+          <p className="suggest-reason" title={reason}>
+            AI 제안 이유: {reason}
+          </p>
+        )}
         {!editing && (
           <label>
             상태

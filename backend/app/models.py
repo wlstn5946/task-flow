@@ -91,6 +91,25 @@ class TaskUpdate(BaseModel):
         return self
 
 
+class SuggestRequest(BaseModel):
+    """AI 제안 요청. 아직 저장하지 않은 Task 의 제목과 설명이다."""
+
+    title: str
+    description: str = ""
+
+    _check_title = field_validator("title")(validate_title)
+
+
+class Suggestion(BaseModel):
+    """AI 제안 응답. 모델이 돌려준 JSON 을 읽을 때도 쓰므로 세 키가 모두 있어야 한다."""
+
+    priority: Priority
+    due_date: str | None
+    reason: str
+
+    _check_due_date = field_validator("due_date")(validate_due_date)
+
+
 USERNAME_PATTERN = re.compile(r"[a-z0-9_]{3,20}")
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
