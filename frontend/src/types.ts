@@ -57,6 +57,20 @@ export interface NewTask {
   due_date: string | null
 }
 
+/** AI 제안 요청. 아직 저장하지 않은 제목과 설명을 보낸다. */
+export interface SuggestRequest {
+  title: string
+  description: string
+}
+
+/** AI 제안. 저장되지 않는다. 칸에 채우기만 하고 저장은 사용자가 한다. */
+export interface Suggestion {
+  priority: Priority
+  /** YYYY-MM-DD. 근거가 없으면 null. */
+  due_date: string | null
+  reason: string
+}
+
 /** 수정 요청. 보낸 항목만 바뀐다. due_date 의 null 은 마감일 지우기이다. */
 export interface TaskChanges {
   title?: string

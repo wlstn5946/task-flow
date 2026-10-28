@@ -216,6 +216,28 @@ button:disabled {
   resize: vertical;
 }
 
+.suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.suggest-status {
+  color: #666;
+}
+
+/* 이유는 최대 3줄까지 보인다. 더 길면 … 으로 줄이고 전체는 마우스를 올리면 보인다. */
+.suggest-reason {
+  margin: 0;
+  color: #444;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
