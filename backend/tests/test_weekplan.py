@@ -16,6 +16,7 @@ from app.main import app
 # 2026-10-20 은 화요일이다. 한 주는 10-20(화) ~ 10-26(월)이다.
 TODAY = date(2026, 10, 20)
 FAKE_KEY = "test-key-not-real"
+SDK_MESSAGE = "sdk-message-not-for-logs"  # SDK 예외가 들고 있는 글. 로그에 나오면 안 된다.
 # anthropic 2.x 는 httpx 가 아니라 httpx2 를 쓴다. 예외 객체를 만들 때 같은 라이브러리를 써야 한다.
 REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 EMPTY = {"plan": [], "note": ""}
@@ -91,8 +92,8 @@ def install_fake(monkeypatch, text=None, *, stop_reason="end_turn", content=None
     return SimpleNamespace(calls=calls, client_kwargs=client_kwargs)
 
 
-def status_error(cls, status):
-    return cls("error", response=httpx2.Response(status, request=REQUEST), body=None)
+def status_error(cls, status, message="error"):
+    return cls(message, response=httpx2.Response(status, request=REQUEST), body=None)
 
 
 def snapshot():
@@ -556,13 +557,13 @@ def test_missing_key_is_logged(client, monkeypatch, caplog, three):
 
 
 def test_api_error_logs_kind_and_status_only(client, monkeypatch, caplog, three):
-    install_fake(monkeypatch, error=status_error(anthropic.RateLimitError, 429))
+    install_fake(monkeypatch, error=status_error(anthropic.RateLimitError, 429, SDK_MESSAGE))
     weekplan(client)
     logs = ai_logs(caplog)
     assert any("RateLimitError" in m and "상태=429" in m for m in logs)
     # 키 · 요청 본문 · 할 일 제목 · SDK 메시지는 로그에 남기지 않는다.
     assert not any(
-        FAKE_KEY in m or "할 일" in m or "error" in m.lower() for m in logs
+        FAKE_KEY in m or "할 일" in m or SDK_MESSAGE in m for m in logs
     )
 
 
