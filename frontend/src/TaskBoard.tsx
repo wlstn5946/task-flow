@@ -9,6 +9,9 @@ import {
   updateTaskStatus,
 } from './api'
 import { Board } from './components/Board'
+import { BriefingButton } from './components/BriefingButton'
+import { BriefingCard } from './components/BriefingCard'
+import { useBriefing } from './hooks/useBriefing'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TaskDialog } from './components/TaskDialog'
 import type { TaskActions } from './components/TaskCard'
@@ -35,6 +38,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
   const [deleting, setDeleting] = useState<Task | null>(null)
   const [actionError, setActionError] = useState('')
   const [loadState, setLoadState] = useState<LoadState>('loading')
+  const briefing = useBriefing()
 
   function load() {
     listTasks()
@@ -154,7 +158,14 @@ function TaskBoard({ user, onLoggedOut }: Props) {
   return (
     <main>
       <header className="app-header">
-        <h1>task-flow</h1>
+        <div className="app-title">
+          <h1>task-flow</h1>
+          <BriefingButton
+            loading={briefing.loading}
+            disabled={loadState !== 'ready'}
+            onClick={briefing.run}
+          />
+        </div>
         <div className="app-header-actions">
           <span className="username">{user.username}</span>
           <button type="button" onClick={handleLogout}>
@@ -169,6 +180,14 @@ function TaskBoard({ user, onLoggedOut }: Props) {
           </button>
         </div>
       </header>
+      {briefing.briefing && (
+        <BriefingCard briefing={briefing.briefing} tasks={tasks} onClose={briefing.close} />
+      )}
+      {briefing.message && (
+        <p className={briefing.isError ? 'error' : 'briefing-note'} role="status">
+          {briefing.message}
+        </p>
+      )}
       {actionError && <p className="error">{actionError}</p>}
       {loadState === 'loading' && <p role="status">불러오는 중...</p>}
       {loadState === 'failed' && (
