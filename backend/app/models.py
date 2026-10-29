@@ -142,6 +142,24 @@ class GeneratedTasks(BaseModel):
     )
 
 
+BRIEFING_TOP_COUNT = 3
+
+
+class BriefingPick(BaseModel):
+    """오늘 먼저 할 일 하나. id 는 서버가 보낸 할 일의 id 이고 reason 은 고른 이유이다."""
+
+    id: int
+    reason: str
+
+
+class Briefing(BaseModel):
+    """오늘 브리핑 응답. 모델이 돌려준 JSON 을 읽을 때도 쓰므로 세 키가 모두 있어야 한다."""
+
+    top3: list[BriefingPick]
+    later: list[int]
+    cheer: str
+
+
 USERNAME_PATTERN = re.compile(r"[a-z0-9_]{3,20}")
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128

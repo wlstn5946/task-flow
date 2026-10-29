@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from app import ai
 from app.deps import Conn, CurrentUser, Today
 from app.models import (
+    Briefing,
     GenerateRequest,
     GeneratedTasks,
     Status,
@@ -73,6 +74,27 @@ def generate_tasks(
 ) -> GeneratedTasks:
     # 목표 하나를 할 일 3~5개로 나눈 초안만 돌려준다. 저장하지 않으므로 저장소를 건드리지 않는다.
     return ai.generate(body.title, today)
+
+
+@router.post("/briefing", response_model=Briefing)
+def briefing_tasks(conn: Conn, user: CurrentUser, today: Today) -> Briefing:
+    # 내 끝나지 않은 할 일만 모아 보내고 고른 결과만 돌려준다. 저장소는 읽기만 한다. (R-009)
+    rows = conn.execute(
+        f"SELECT id, title, priority, due_date, status FROM tasks"
+        f" WHERE owner_id = :owner_id AND status != 'DONE' {LIST_ORDER}",
+        {"owner_id": user.id, "today": today.isoformat()},
+    ).fetchall()
+    tasks = [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "priority": row["priority"],
+            "due_date": row["due_date"],
+            "overdue": _is_overdue(row, today),
+        }
+        for row in rows
+    ]
+    return ai.briefing(tasks, today)
 
 
 @router.post("", response_model=Task, status_code=201)
