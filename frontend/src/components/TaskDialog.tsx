@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ApiError, generateTasks, suggestTask } from '../api'
+import { ApiError, suggestTask } from '../api'
 import {
   PRIORITIES,
   PRIORITY_LABEL,
   STATUSES,
   STATUS_LABEL,
   TITLE_MAX_LENGTH,
-  type GeneratedTask,
   type NewTask,
   type Priority,
   type Status,
@@ -18,19 +17,12 @@ interface Props {
   task?: Task
   onCancel: () => void
   onSubmit: (task: NewTask) => Promise<void>
-  /**
-   * 있으면 생성 창에 [AI로 할 일 만들기] 가 생긴다. 미리 보기의 초안을 모두 등록하고,
-   * 등록하지 못한 초안을 돌려준다. 하나도 남지 않으면 호출한 쪽이 창을 닫는다.
-   */
-  onRegisterGenerated?: (drafts: GeneratedTask[]) => Promise<GeneratedTask[]>
 }
 
 const SUGGEST_UNAVAILABLE = '지금은 AI 제안을 쓸 수 없습니다. 직접 입력해 주세요.'
 const SUGGEST_FAILED = '제안을 못 받았습니다. 다시 제안 버튼을 눌러 보세요.'
-const GENERATE_UNAVAILABLE = '지금은 AI 기능을 쓸 수 없습니다.'
-const GENERATE_FAILED = '제안을 만들지 못했습니다. 다시 시도해 주세요.'
 
-export function TaskDialog({ task, onCancel, onSubmit, onRegisterGenerated }: Props) {
+export function TaskDialog({ task, onCancel, onSubmit }: Props) {
   const editing = task !== undefined
   const [title, setTitle] = useState(task?.title ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
@@ -46,70 +38,12 @@ export function TaskDialog({ task, onCancel, onSubmit, onRegisterGenerated }: Pr
   const [reason, setReason] = useState('')
   // 요청마다 번호를 매겨, 저장을 누른 뒤나 창이 닫힌 뒤에 늦게 온 응답은 버린다.
   const suggestSeq = useRef(0)
-  // AI 할 일 만들기: 제목 칸을 주제로 3~5개 초안을 받아 미리 본다. 등록하기 전에는 아무것도 저장하지 않는다.
-  const canGenerate = !editing && onRegisterGenerated !== undefined
-  const [generating, setGenerating] = useState(false)
-  const [registering, setRegistering] = useState(false)
-  const [generateMessage, setGenerateMessage] = useState('')
-  const [drafts, setDrafts] = useState<GeneratedTask[] | null>(null)
-  const generateSeq = useRef(0)
 
   useEffect(() => {
     return () => {
       suggestSeq.current += 1
-      generateSeq.current += 1
     }
   }, [])
-
-  async function handleGenerate() {
-    const topic = title.trim()
-    if (topic === '') {
-      setDrafts(null)
-      setGenerateMessage('제목 칸에 주제를 입력해 주세요.')
-      return
-    }
-    generateSeq.current += 1
-    const seq = generateSeq.current
-    setGenerating(true)
-    setGenerateMessage('')
-    setDrafts(null)
-    try {
-      const result = await generateTasks({ title: topic })
-      if (seq !== generateSeq.current) return
-      if (!Array.isArray(result.tasks) || result.tasks.length === 0) {
-        throw new Error('빈 제안')
-      }
-      setDrafts(result.tasks)
-    } catch (e) {
-      if (seq !== generateSeq.current) return
-      // 입력한 제목(주제)은 지우지 않는다.
-      setGenerateMessage(
-        e instanceof ApiError && e.status === 503 ? GENERATE_UNAVAILABLE : GENERATE_FAILED,
-      )
-    } finally {
-      if (seq === generateSeq.current) setGenerating(false)
-    }
-  }
-
-  async function handleRegister() {
-    if (drafts === null || onRegisterGenerated === undefined) return
-    setRegistering(true)
-    setGenerateMessage('')
-    try {
-      const failed = await onRegisterGenerated(drafts)
-      // 모두 등록되면 호출한 쪽이 창을 닫는다. 실패한 것만 남겨 다시 시도할 수 있게 한다.
-      if (failed.length > 0) {
-        setGenerateMessage(
-          `${drafts.length - failed.length}개 등록, ${failed.length}개 실패. 실패한 항목은 [모두 등록] 으로 다시 시도할 수 있습니다.`,
-        )
-        setDrafts(failed)
-      }
-    } catch {
-      setGenerateMessage('등록하지 못했습니다. 다시 시도해 주세요.')
-    } finally {
-      setRegistering(false)
-    }
-  }
 
   async function handleSuggest() {
     if (title.trim() === '') {
@@ -201,59 +135,13 @@ export function TaskDialog({ task, onCancel, onSubmit, onRegisterGenerated }: Pr
           <button type="button" onClick={handleSuggest} disabled={suggesting}>
             AI 제안
           </button>
-          {canGenerate && (
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={generating || registering}
-            >
-              AI로 할 일 만들기
-            </button>
-          )}
           {suggesting && (
             <span className="suggest-status" role="status">
               제안을 받는 중...
             </span>
           )}
-          {generating && (
-            <span className="suggest-status" role="status">
-              만드는 중…
-            </span>
-          )}
         </div>
         {suggestMessage && <p className="error">{suggestMessage}</p>}
-        {canGenerate && generateMessage && <p className="error">{generateMessage}</p>}
-        {canGenerate && drafts !== null && (
-          <section className="generate-preview" aria-label="AI 가 만든 할 일 미리 보기">
-            <p className="generate-preview-title">
-              AI 가 만든 할 일 — 아직 저장되지 않았습니다
-            </p>
-            <ul className="generate-preview-list">
-              {drafts.map((draft, index) => (
-                <li key={index}>
-                  <strong>{draft.title}</strong>
-                  <span className="generate-meta">
-                    우선순위 {PRIORITY_LABEL[draft.priority]} ·{' '}
-                    {draft.due_date ? `마감일 ${draft.due_date}` : '마감일 없음'}
-                  </span>
-                  {draft.description && (
-                    <span className="generate-desc">{draft.description}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="suggest-row">
-              <button type="button" onClick={handleRegister} disabled={registering}>
-                모두 등록
-              </button>
-              {registering && (
-                <span className="suggest-status" role="status">
-                  등록 중…
-                </span>
-              )}
-            </div>
-          </section>
-        )}
         <label>
           우선순위
           <select
@@ -297,10 +185,10 @@ export function TaskDialog({ task, onCancel, onSubmit, onRegisterGenerated }: Pr
         )}
         {error && <p className="error">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" onClick={onCancel} disabled={submitting || registering}>
+          <button type="button" onClick={onCancel} disabled={submitting}>
             취소
           </button>
-          <button type="submit" disabled={submitting || registering}>
+          <button type="submit" disabled={submitting}>
             {editing ? '저장' : '생성'}
           </button>
         </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  ApiError,
   createTask,
   deleteTask,
   listTasks,
@@ -12,14 +11,7 @@ import { Board } from './components/Board'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TaskDialog } from './components/TaskDialog'
 import type { TaskActions } from './components/TaskCard'
-import type {
-  GeneratedTask,
-  NewTask,
-  Status,
-  Task,
-  TaskChanges,
-  User,
-} from './types'
+import type { NewTask, Status, Task, TaskChanges, User } from './types'
 
 type LoadState = 'loading' | 'ready' | 'failed'
 
@@ -76,33 +68,6 @@ function TaskBoard({ user, onLoggedOut }: Props) {
     setTasks((prev) => [...prev, created])
     setCreating(false)
     refreshOrder()
-  }
-
-  // AI 가 나눠 준 초안을 하나씩 차례로 만든다. 상태는 "할 일" 이다. 성공한 것은 보드에 남기고,
-  // 만들지 못한 초안을 돌려준다. 모두 만들었으면 창을 닫고, 하나라도 못 만들었으면 열어 둔다.
-  async function handleRegisterGenerated(drafts: GeneratedTask[]): Promise<GeneratedTask[]> {
-    const created: Task[] = []
-    const failed: GeneratedTask[] = []
-    for (const [index, draft] of drafts.entries()) {
-      try {
-        created.push(await createTask({ ...draft, status: 'TODO' }))
-      } catch (e) {
-        failed.push(draft)
-        // 로그인이 풀렸으면(401) 남은 것도 모두 실패한다. 더 보내지 않는다.
-        if (e instanceof ApiError && e.status === 401) {
-          failed.push(...drafts.slice(index + 1))
-          break
-        }
-      }
-    }
-    if (created.length > 0) {
-      setTasks((prev) => [...prev, ...created])
-      refreshOrder()
-    }
-    if (failed.length === 0) {
-      setCreating(false)
-    }
-    return failed
   }
 
   async function handleEdit(task: Task, values: NewTask) {
@@ -184,7 +149,6 @@ function TaskBoard({ user, onLoggedOut }: Props) {
         <TaskDialog
           onCancel={() => setCreating(false)}
           onSubmit={handleCreate}
-          onRegisterGenerated={handleRegisterGenerated}
         />
       )}
       {editing && (

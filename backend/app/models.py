@@ -2,7 +2,7 @@ import re
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 TITLE_MAX_LENGTH = 20
 
@@ -108,38 +108,6 @@ class Suggestion(BaseModel):
     reason: str
 
     _check_due_date = field_validator("due_date")(validate_due_date)
-
-
-GENERATE_MIN_TASKS = 3
-GENERATE_MAX_TASKS = 5
-
-
-class GenerateRequest(BaseModel):
-    """AI 할 일 나누기 요청. 이루고 싶은 목표의 제목 하나이다."""
-
-    title: str
-
-    _check_title = field_validator("title")(validate_title)
-
-
-class GeneratedTask(BaseModel):
-    """AI 가 나눠 준 할 일 하나. 저장 전의 초안이므로 상태와 id 는 없다. 네 키가 모두 있어야 한다."""
-
-    title: str
-    description: str
-    priority: Priority
-    due_date: str | None
-
-    _check_title = field_validator("title")(validate_title)
-    _check_due_date = field_validator("due_date")(validate_due_date)
-
-
-class GeneratedTasks(BaseModel):
-    """AI 할 일 나누기 응답. 모델이 돌려준 JSON 을 읽을 때도 쓴다. 하나라도 틀리면 전체가 틀린 것이다."""
-
-    tasks: list[GeneratedTask] = Field(
-        min_length=GENERATE_MIN_TASKS, max_length=GENERATE_MAX_TASKS
-    )
 
 
 USERNAME_PATTERN = re.compile(r"[a-z0-9_]{3,20}")

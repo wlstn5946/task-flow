@@ -201,9 +201,7 @@ button:disabled {
   flex-direction: column;
   gap: 0.75rem;
   width: min(420px, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
   padding: 1.25rem;
-  overflow-y: auto;
   background: #fff;
 }
 
@@ -220,64 +218,24 @@ button:disabled {
 
 .suggest-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-}
-
-/* AI 가 만든 할 일 미리 보기. 목록이 길면 안에서 스크롤된다. */
-.generate-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
-}
-
-.generate-preview-title {
-  margin: 0;
-  font-weight: bold;
-}
-
-.generate-preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 10rem;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.generate-preview-list li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.generate-meta {
-  color: #666;
-  font-size: 0.875rem;
-}
-
-.generate-desc {
-  color: #444;
-  overflow-wrap: anywhere;
 }
 
 .suggest-status {
   color: #666;
 }
 
-/* 이유는 3줄 높이까지 보인다. 더 길면 그 안에서 스크롤해 끝까지 볼 수 있다. */
+/* 이유는 최대 3줄까지 보인다. 더 길면 … 으로 줄이고 전체는 마우스를 올리면 보인다. */
 .suggest-reason {
   margin: 0;
   color: #444;
-  line-height: 1.4;
-  max-height: calc(1.4em * 3);
-  overflow-y: auto;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .dialog-actions {

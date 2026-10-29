@@ -71,25 +71,6 @@ export interface Suggestion {
   reason: string
 }
 
-/** AI 할 일 나누기 요청. 이루고 싶은 목표의 제목 하나를 보낸다. */
-export interface GenerateRequest {
-  title: string
-}
-
-/** AI 가 나눠 준 할 일 하나. 저장 전의 초안이라 id 와 상태가 없다. */
-export interface GeneratedTask {
-  title: string
-  description: string
-  priority: Priority
-  /** YYYY-MM-DD. 근거가 없으면 null. */
-  due_date: string | null
-}
-
-/** AI 할 일 나누기 응답. 3~5개이며 서버는 저장하지 않는다. */
-export interface GeneratedTasks {
-  tasks: GeneratedTask[]
-}
-
 /** 수정 요청. 보낸 항목만 바뀐다. due_date 의 null 은 마감일 지우기이다. */
 export interface TaskChanges {
   title?: string
