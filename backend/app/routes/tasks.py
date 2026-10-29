@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException
 from app import ai
 from app.deps import Conn, CurrentUser, Today
 from app.models import (
+    GenerateRequest,
+    GeneratedTasks,
     Status,
     SuggestRequest,
     Suggestion,
@@ -63,6 +65,14 @@ def list_tasks(conn: Conn, user: CurrentUser, today: Today) -> list[Task]:
 def suggest_task(body: SuggestRequest, user: CurrentUser, today: Today) -> Suggestion:
     # 제안만 돌려주고 저장소는 건드리지 않는다. 로그인 확인은 CurrentUser 가 먼저 한다.
     return ai.suggest(body.title, body.description, today)
+
+
+@router.post("/generate", response_model=GeneratedTasks)
+def generate_tasks(
+    body: GenerateRequest, user: CurrentUser, today: Today
+) -> GeneratedTasks:
+    # 목표 하나를 할 일 3~5개로 나눈 초안만 돌려준다. 저장하지 않으므로 저장소를 건드리지 않는다.
+    return ai.generate(body.title, today)
 
 
 @router.post("", response_model=Task, status_code=201)

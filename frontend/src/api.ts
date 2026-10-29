@@ -1,5 +1,7 @@
 import type {
   Credentials,
+  GeneratedTasks,
+  GenerateRequest,
   NewTask,
   Status,
   SuggestRequest,
@@ -76,6 +78,14 @@ export function createTask(task: NewTask): Promise<Task> {
 /** 제안만 받는다. 서버는 저장하지 않는다. 실패는 ApiError(502 제안 실패 · 503 AI 꺼짐 또는 바쁨)이다. */
 export function suggestTask(body: SuggestRequest): Promise<Suggestion> {
   return request<Suggestion>('/tasks/suggest', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+/** 목표 하나를 할 일 3~5개 초안으로 받는다. 서버는 저장하지 않는다. 실패는 ApiError(502 제안 실패 · 503 AI 꺼짐 또는 바쁨)이다. */
+export function generateTasks(body: GenerateRequest): Promise<GeneratedTasks> {
+  return request<GeneratedTasks>('/tasks/generate', {
     method: 'POST',
     body: JSON.stringify(body),
   })
