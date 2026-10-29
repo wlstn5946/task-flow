@@ -12,6 +12,9 @@ import { Board } from './components/Board'
 import { BriefingButton } from './components/BriefingButton'
 import { BriefingCard } from './components/BriefingCard'
 import { useBriefing } from './hooks/useBriefing'
+import { WeekPlanButton } from './components/WeekPlanButton'
+import { WeekPlanCard } from './components/WeekPlanCard'
+import { useWeekPlan } from './hooks/useWeekPlan'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TaskDialog } from './components/TaskDialog'
 import type { TaskActions } from './components/TaskCard'
@@ -39,6 +42,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
   const [actionError, setActionError] = useState('')
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const briefing = useBriefing()
+  const weekPlan = useWeekPlan()
 
   function load() {
     listTasks()
@@ -165,6 +169,11 @@ function TaskBoard({ user, onLoggedOut }: Props) {
             disabled={loadState !== 'ready'}
             onClick={briefing.run}
           />
+          <WeekPlanButton
+            loading={weekPlan.loading}
+            disabled={loadState !== 'ready'}
+            onClick={weekPlan.run}
+          />
         </div>
         <div className="app-header-actions">
           <span className="username">{user.username}</span>
@@ -186,6 +195,12 @@ function TaskBoard({ user, onLoggedOut }: Props) {
       {briefing.message && (
         <p className={briefing.isError ? 'error' : 'briefing-note'} role="status">
           {briefing.message}
+        </p>
+      )}
+      {weekPlan.weekPlan && <WeekPlanCard weekPlan={weekPlan.weekPlan} onClose={weekPlan.close} />}
+      {weekPlan.message && (
+        <p className={weekPlan.isError ? 'error' : 'weekplan-info'} role="status">
+          {weekPlan.message}
         </p>
       )}
       {actionError && <p className="error">{actionError}</p>}
