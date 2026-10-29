@@ -16,6 +16,8 @@ from app.models import (
     Task,
     TaskCreate,
     TaskUpdate,
+    WeekPlan,
+    validate_due_date,
 )
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -53,6 +55,22 @@ def _to_task(row: sqlite3.Row, today: date) -> Task:
     return Task(**row, is_overdue=_is_overdue(row, today))
 
 
+def _ai_task(row: sqlite3.Row, today: date) -> dict:
+    """AI 에 보낼 Task 한 건. 프롬프트가 due_date 를 YYYY-MM-DD 또는 null 로 약속하므로,
+    DB 에 규칙 밖 글이 들어 있으면 마감일이 없는 것으로 보내고 기한 초과도 아니라고 한다."""
+    try:
+        due_date = validate_due_date(row["due_date"])
+    except ValueError:
+        due_date = None
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "priority": row["priority"],
+        "due_date": due_date,
+        "overdue": due_date is not None and _is_overdue(row, today),
+    }
+
+
 @router.get("", response_model=list[Task])
 def list_tasks(conn: Conn, user: CurrentUser, today: Today) -> list[Task]:
     rows = conn.execute(
@@ -84,17 +102,24 @@ def briefing_tasks(conn: Conn, user: CurrentUser, today: Today) -> Briefing:
         f" WHERE owner_id = :owner_id AND status != 'DONE' {LIST_ORDER}",
         {"owner_id": user.id, "today": today.isoformat()},
     ).fetchall()
-    tasks = [
-        {
-            "id": row["id"],
-            "title": row["title"],
-            "priority": row["priority"],
-            "due_date": row["due_date"],
-            "overdue": _is_overdue(row, today),
-        }
-        for row in rows
-    ]
+    tasks = [_ai_task(row, today) for row in rows]
     return ai.briefing(tasks, today)
+
+
+def _weekplan_tasks(conn: sqlite3.Connection, owner_id: int, today: date) -> list[dict]:
+    """주간 계획에 보낼 내 끝나지 않은 할 일. 설명은 읽지 않는다."""
+    rows = conn.execute(
+        f"SELECT id, title, priority, due_date, status FROM tasks"
+        f" WHERE owner_id = :owner_id AND status != 'DONE' {LIST_ORDER}",
+        {"owner_id": owner_id, "today": today.isoformat()},
+    ).fetchall()
+    return [_ai_task(row, today) for row in rows]
+
+
+@router.post("/weekplan", response_model=WeekPlan)
+def weekplan_tasks(conn: Conn, user: CurrentUser, today: Today) -> WeekPlan:
+    # 내 끝나지 않은 할 일을 오늘부터 7일에 나눈 계획만 돌려준다. 저장소는 읽기만 한다. (R-009)
+    return ai.weekplan(_weekplan_tasks(conn, user.id, today), today)
 
 
 @router.post("", response_model=Task, status_code=201)
