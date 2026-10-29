@@ -90,6 +90,20 @@ export interface GeneratedTasks {
   tasks: GeneratedTask[]
 }
 
+/** 오늘 브리핑에서 먼저 할 일 하나. 제목은 없고 id 로 Task 를 찾아 보여 준다. */
+export interface BriefingPick {
+  id: number
+  reason: string
+}
+
+/** 오늘 브리핑. 서버는 저장하지 않는다. 할 일이 없으면 top3 · later 가 모두 빈 배열이다. */
+export interface Briefing {
+  top3: BriefingPick[]
+  /** 미뤄도 되는 Task 의 id. */
+  later: number[]
+  cheer: string
+}
+
 /** 수정 요청. 보낸 항목만 바뀐다. due_date 의 null 은 마감일 지우기이다. */
 export interface TaskChanges {
   title?: string

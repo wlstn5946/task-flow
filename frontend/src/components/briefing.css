@@ -1,0 +1,51 @@
+/* 오늘 브리핑. 헤더의 제목 묶음과 헤더 아래 카드. */
+.app-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.briefing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #444;
+  background: #fff;
+}
+
+.briefing-card h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.briefing-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing-card li {
+  overflow-wrap: anywhere;
+}
+
+.briefing-cheer {
+  margin: 0;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+.briefing-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.briefing-note {
+  margin: 0 0 1rem;
+  color: #666;
+}

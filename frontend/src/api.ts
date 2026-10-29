@@ -1,4 +1,5 @@
 import type {
+  Briefing,
   Credentials,
   GeneratedTasks,
   GenerateRequest,
@@ -89,6 +90,11 @@ export function generateTasks(body: GenerateRequest): Promise<GeneratedTasks> {
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+/** 로그인한 사람의 완료 아닌 할 일로 오늘 브리핑을 받는다. 본문 없음. 실패는 ApiError(502 형식 위반 · 503 AI 꺼짐 또는 바쁨)이다. */
+export function getBriefing(): Promise<Briefing> {
+  return request<Briefing>('/tasks/briefing', { method: 'POST' })
 }
 
 export function updateTask(id: number, changes: TaskChanges): Promise<Task> {
