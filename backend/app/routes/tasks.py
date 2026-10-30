@@ -8,6 +8,8 @@ from app import ai
 from app.deps import Conn, CurrentUser, Today
 from app.models import (
     Briefing,
+    CommandRequest,
+    CommandResult,
     GenerateRequest,
     GeneratedTasks,
     Status,
@@ -120,6 +122,14 @@ def _weekplan_tasks(conn: sqlite3.Connection, owner_id: int, today: date) -> lis
 def weekplan_tasks(conn: Conn, user: CurrentUser, today: Today) -> WeekPlan:
     # 내 끝나지 않은 할 일을 오늘부터 7일에 나눈 계획만 돌려준다. 저장소는 읽기만 한다. (R-009)
     return ai.weekplan(_weekplan_tasks(conn, user.id, today), today)
+
+
+@router.post("/command", response_model=CommandResult)
+def command_tasks(
+    body: CommandRequest, conn: Conn, user: CurrentUser, today: Today
+) -> CommandResult:
+    # 한 문장을 바꿀 일의 제안으로만 돌려준다. 저장소는 읽기만 하고 적용은 사용자가 따로 한다. (R-009)
+    return ai.command(_weekplan_tasks(conn, user.id, today), body.text, today)
 
 
 @router.post("", response_model=Task, status_code=201)
