@@ -1,0 +1,60 @@
+/* 한 문장 명령. 브리핑 · 주간 계획 아래, 보드 위. */
+.command {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.command-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.command-form input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #444;
+  border-radius: 0;
+}
+
+.command-ask {
+  margin: 0;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+.command-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #444;
+  background: #fff;
+}
+
+.command-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.command-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.command-card li {
+  overflow-wrap: anywhere;
+}
+
+.command-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

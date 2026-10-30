@@ -1,6 +1,7 @@
 import re
 from datetime import date
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -189,6 +190,59 @@ class WeekPlan(BaseModel):
 
     plan: list[WeekPlanItem]
     note: str
+
+
+COMMAND_MAX_LENGTH = 200
+
+
+class CommandRequest(BaseModel):
+    """한 문장 명령 요청. 앞뒤 공백을 지운 글이 1~200자여야 한다."""
+
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _check_text(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("명령은 비워 둘 수 없습니다.")
+        if len(text) > COMMAND_MAX_LENGTH:
+            raise ValueError(f"명령은 {COMMAND_MAX_LENGTH}글자까지입니다.")
+        return text
+
+
+class RawCommandAction(BaseModel):
+    """모델이 돌려준 action 하나. 값이 규칙 밖인지는 구조가 아니라 걸러내기에서 본다."""
+
+    kind: str
+    id: int | None = None
+    title: str | None = None
+    priority: str | None = None
+    due_date: str | None = None
+
+
+class RawCommand(BaseModel):
+    """모델이 돌려준 명령 JSON 을 읽을 때 쓴다. actions 키가 있어야 한다."""
+
+    actions: list[RawCommandAction]
+    ask: str | None = None
+
+
+class CommandAction(BaseModel):
+    """바꾸자는 제안 하나. add 는 새 카드(id 없음), due 는 마감일 변경, done 은 완료 처리이다."""
+
+    kind: Literal["add", "due", "done"]
+    id: int | None
+    title: str | None
+    priority: Priority | None
+    due_date: str | None
+
+
+class CommandResult(BaseModel):
+    """한 문장 명령 응답. 서버는 저장하지 않는다. 남은 action 이 없으면 ask 에 한 문장이 있다."""
+
+    actions: list[CommandAction]
+    ask: str | None
 
 
 USERNAME_PATTERN = re.compile(r"[a-z0-9_]{3,20}")

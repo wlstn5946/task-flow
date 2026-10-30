@@ -11,6 +11,7 @@ import {
 import { Board } from './components/Board'
 import { BriefingButton } from './components/BriefingButton'
 import { BriefingCard } from './components/BriefingCard'
+import { CommandBar } from './components/CommandBar'
 import { useBriefing } from './hooks/useBriefing'
 import { WeekPlanButton } from './components/WeekPlanButton'
 import { WeekPlanCard } from './components/WeekPlanCard'
@@ -203,6 +204,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
           {weekPlan.message}
         </p>
       )}
+      <CommandBar tasks={tasks} disabled={loadState !== 'ready'} onApplied={refreshOrder} />
       {actionError && <p className="error">{actionError}</p>}
       {loadState === 'loading' && <p role="status">불러오는 중...</p>}
       {loadState === 'failed' && (

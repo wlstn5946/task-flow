@@ -112,6 +112,28 @@ export interface TaskChanges {
   due_date?: string | null
 }
 
+/** 한 문장 명령의 최대 글자 수. 서버 규칙과 같다. */
+export const COMMAND_MAX_LENGTH = 200
+
+/** 명령이 시키는 일: 새 카드 · 마감일 바꾸기 · 완료로 바꾸기. 삭제는 없다. */
+export type CommandKind = 'add' | 'due' | 'done'
+
+/** 명령 제안 하나. add 는 id 가 없고, due · done 은 id 로 보드의 Task 를 찾는다. */
+export interface CommandAction {
+  kind: CommandKind
+  id: number | null
+  title: string | null
+  priority: Priority | null
+  /** YYYY-MM-DD. */
+  due_date: string | null
+}
+
+/** 한 문장 명령 응답. 서버는 저장하지 않는다. 알아듣지 못하면 actions 가 비고 ask 에 한 문장이 온다. */
+export interface CommandResult {
+  actions: CommandAction[]
+  ask: string | null
+}
+
 /** 이번 주 계획의 한 칸. date 는 서버가 만든 한국어 날짜 글(10월 30일 (금))이고 title 은 서버가 준 값을 그대로 쓴다. */
 export interface WeekPlanItem {
   id: number
