@@ -10,6 +10,7 @@ import type {
   Task,
   TaskChanges,
   User,
+  WeekPlan,
 } from './types'
 
 export class ApiError extends Error {
@@ -95,6 +96,11 @@ export function generateTasks(body: GenerateRequest): Promise<GeneratedTasks> {
 /** 로그인한 사람의 완료 아닌 할 일로 오늘 브리핑을 받는다. 본문 없음. 실패는 ApiError(502 형식 위반 · 503 AI 꺼짐 또는 바쁨)이다. */
 export function getBriefing(): Promise<Briefing> {
   return request<Briefing>('/tasks/briefing', { method: 'POST' })
+}
+
+/** 로그인한 사람의 완료 아닌 할 일을 오늘부터 7일에 나눈 이번 주 계획을 받는다. 본문 없음. 실패는 ApiError(502 형식 위반 · 503 AI 꺼짐 또는 바쁨)이다. */
+export function getWeekPlan(): Promise<WeekPlan> {
+  return request<WeekPlan>('/tasks/weekplan', { method: 'POST' })
 }
 
 export function updateTask(id: number, changes: TaskChanges): Promise<Task> {

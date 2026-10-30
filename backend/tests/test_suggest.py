@@ -14,6 +14,7 @@ from app.main import app
 
 TODAY = date(2026, 10, 20)
 FAKE_KEY = "test-key-not-real"
+SDK_MESSAGE = "sdk-message-not-for-logs"  # SDK 예외가 들고 있는 글. 로그에 나오면 안 된다.
 # anthropic 2.x 는 httpx 가 아니라 httpx2 를 쓴다. 예외 객체를 만들 때 같은 라이브러리를 써야 한다.
 REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 
@@ -74,8 +75,8 @@ def install_fake(monkeypatch, text=None, *, stop_reason="end_turn", content=None
     return calls
 
 
-def status_error(cls, status):
-    return cls("error", response=httpx2.Response(status, request=REQUEST), body=None)
+def status_error(cls, status, message="error"):
+    return cls(message, response=httpx2.Response(status, request=REQUEST), body=None)
 
 
 def snapshot():
@@ -328,10 +329,10 @@ def test_missing_key_is_logged(client, monkeypatch, caplog):
 @pytest.mark.parametrize(
     ("error", "kind", "status"),
     [
-        (status_error(anthropic.AuthenticationError, 401), "AuthenticationError", "401"),
-        (status_error(anthropic.RateLimitError, 429), "RateLimitError", "429"),
-        (anthropic.APIConnectionError(request=REQUEST), "APIConnectionError", "None"),
-        (status_error(anthropic.InternalServerError, 500), "InternalServerError", "500"),
+        (status_error(anthropic.AuthenticationError, 401, SDK_MESSAGE), "AuthenticationError", "401"),
+        (status_error(anthropic.RateLimitError, 429, SDK_MESSAGE), "RateLimitError", "429"),
+        (anthropic.APIConnectionError(message=SDK_MESSAGE, request=REQUEST), "APIConnectionError", "None"),
+        (status_error(anthropic.InternalServerError, 500, SDK_MESSAGE), "InternalServerError", "500"),
     ],
 )
 def test_api_error_logs_kind_and_status_only(client, monkeypatch, caplog, error, kind, status):
@@ -340,4 +341,4 @@ def test_api_error_logs_kind_and_status_only(client, monkeypatch, caplog, error,
     logs = ai_logs(caplog)
     assert any(kind in m and f"상태={status}" in m for m in logs)
     # 키 · 요청 본문 · SDK 메시지는 로그에 남기지 않는다.
-    assert not any(FAKE_KEY in m or "보고서 마무리" in m or "error" in m.lower() for m in logs)
+    assert not any(FAKE_KEY in m or "보고서 마무리" in m or SDK_MESSAGE in m for m in logs)

@@ -111,3 +111,17 @@ export interface TaskChanges {
   priority?: Priority
   due_date?: string | null
 }
+
+/** 이번 주 계획의 한 칸. date 는 서버가 만든 한국어 날짜 글(10월 30일 (금))이고 title 은 서버가 준 값을 그대로 쓴다. */
+export interface WeekPlanItem {
+  id: number
+  date: string
+  title: string
+}
+
+/** 이번 주 계획. 서버는 저장하지 않는다. 할 일이 없으면 plan 이 빈 배열이고 note 는 빈 문자열이다. */
+export interface WeekPlan {
+  plan: WeekPlanItem[]
+  /** 이번 주 일정 전체에 대한 한 줄 조언. */
+  note: string
+}

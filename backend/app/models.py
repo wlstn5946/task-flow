@@ -160,6 +160,37 @@ class Briefing(BaseModel):
     cheer: str
 
 
+class RawWeekPlanItem(BaseModel):
+    """모델이 정한 한 항목. title 은 받지 않는다. 서버가 id 로 채운다."""
+
+    id: int
+    date: str
+
+    _check_date = field_validator("date")(validate_due_date)
+
+
+class RawWeekPlan(BaseModel):
+    """모델이 돌려준 주간 계획 JSON 을 읽을 때 쓴다. plan · note 키가 있어야 한다."""
+
+    plan: list[RawWeekPlanItem]
+    note: str
+
+
+class WeekPlanItem(BaseModel):
+    """주간 계획 한 칸. date 는 서버가 만든 한국어 날짜 글(10월 30일 (금))이고 title 은 DB 값이다."""
+
+    id: int
+    date: str
+    title: str
+
+
+class WeekPlan(BaseModel):
+    """주간 계획 응답. 날짜 순이고 같은 날은 모델이 준 순서이다. note 는 한 주 전체에 대한 한 줄 조언이다."""
+
+    plan: list[WeekPlanItem]
+    note: str
+
+
 USERNAME_PATTERN = re.compile(r"[a-z0-9_]{3,20}")
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128

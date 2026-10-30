@@ -15,6 +15,7 @@ from app.main import app
 
 TODAY = date(2026, 10, 20)
 FAKE_KEY = "test-key-not-real"
+SDK_MESSAGE = "sdk-message-not-for-logs"  # SDK 예외가 들고 있는 글. 로그에 나오면 안 된다.
 # anthropic 2.x 는 httpx 가 아니라 httpx2 를 쓴다. 예외 객체를 만들 때 같은 라이브러리를 써야 한다.
 REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 EMPTY = {"top3": [], "later": [], "cheer": "오늘은 비어 있어요."}
@@ -89,8 +90,8 @@ def install_fake(monkeypatch, text=None, *, stop_reason="end_turn", content=None
     return SimpleNamespace(calls=calls, client_kwargs=client_kwargs)
 
 
-def status_error(cls, status):
-    return cls("error", response=httpx2.Response(status, request=REQUEST), body=None)
+def status_error(cls, status, message="error"):
+    return cls(message, response=httpx2.Response(status, request=REQUEST), body=None)
 
 
 def snapshot():
@@ -503,11 +504,49 @@ def test_missing_key_is_logged(client, monkeypatch, caplog, three):
 
 
 def test_api_error_logs_kind_and_status_only(client, monkeypatch, caplog, three):
-    install_fake(monkeypatch, error=status_error(anthropic.RateLimitError, 429))
+    install_fake(monkeypatch, error=status_error(anthropic.RateLimitError, 429, SDK_MESSAGE))
     briefing(client)
     logs = ai_logs(caplog)
     assert any("RateLimitError" in m and "상태=429" in m for m in logs)
     # 키 · 요청 본문 · 할 일 제목 · SDK 메시지는 로그에 남기지 않는다.
     assert not any(
-        FAKE_KEY in m or "할 일" in m or "error" in m.lower() for m in logs
+        FAKE_KEY in m or "할 일" in m or SDK_MESSAGE in m for m in logs
     )
+
+
+# --- DB 의 규칙 밖 마감일 ---
+
+
+def set_raw_due_date(task_id, value):
+    """API 를 거치지 않고 DB 에 마감일을 직접 쓴다. CHECK 가 통과시키는 규칙 밖 글을 만들기 위해서이다."""
+    conn = sqlite3.connect(db_path())
+    try:
+        conn.execute("PRAGMA ignore_check_constraints=ON")
+        conn.execute("UPDATE tasks SET due_date = ? WHERE id = ?", (value, task_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("bad", ["다음주", "10/20", "2026-02-30", "2026-10-21T09:00:00", ""])
+def test_due_date_outside_the_rules_is_sent_as_none(client, monkeypatch, bad):
+    task_id = add(client, "표본")
+    set_raw_due_date(task_id, bad)
+    fake = install_fake(monkeypatch, reply(top3=[task_id]))
+    assert briefing(client).status_code == 200
+    (sent,) = sent_tasks(fake)
+    # 규칙 밖 글은 모델에 가지 않고, 마감일이 없으니 기한 초과도 아니다.
+    assert sent["due_date"] is None
+    assert sent["overdue"] is False
+    content = fake.calls[0]["messages"][0]["content"]
+    assert bad == "" or bad not in content
+
+
+def test_valid_due_date_is_sent_unchanged(client, monkeypatch):
+    late = add(client, "지난 일", due_date="2026-10-19")
+    soon = add(client, "다음 일", due_date="2026-10-21")
+    fake = install_fake(monkeypatch, reply(top3=[late]))
+    assert briefing(client).status_code == 200
+    sent = {t["id"]: t for t in sent_tasks(fake)}
+    assert (sent[late]["due_date"], sent[late]["overdue"]) == ("2026-10-19", True)
+    assert (sent[soon]["due_date"], sent[soon]["overdue"]) == ("2026-10-21", False)
