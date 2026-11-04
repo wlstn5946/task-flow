@@ -43,7 +43,7 @@ def db(monkeypatch):
 def client(db):
     creds = {"username": "alice", "password": "password1"}
     with TestClient(app) as c:
-        assert c.post("/auth/register", json=creds).status_code == 201
+        assert c.post("/auth/signup", json=creds).status_code == 201
         assert c.post("/auth/login", json=creds).status_code == 200
         yield c
 

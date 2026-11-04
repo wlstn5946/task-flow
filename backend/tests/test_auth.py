@@ -14,7 +14,7 @@ def client(monkeypatch):
 
 
 def register(client, username="alice", password="password1"):
-    return client.post("/auth/register", json={"username": username, "password": password})
+    return client.post("/auth/signup", json={"username": username, "password": password})
 
 
 def login(client, username="alice", password="password1"):
@@ -49,7 +49,7 @@ def test_register_duplicate_username_is_409(client):
     ],
 )
 def test_register_invalid_input_is_422(client, body):
-    assert client.post("/auth/register", json=body).status_code == 422
+    assert client.post("/auth/signup", json=body).status_code == 422
 
 
 def test_password_is_stored_as_argon2_hash(client):
