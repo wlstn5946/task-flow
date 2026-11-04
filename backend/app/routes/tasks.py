@@ -1,7 +1,7 @@
-import sqlite3
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
+import psycopg
 from fastapi import APIRouter, HTTPException
 
 from app import ai
@@ -31,7 +31,7 @@ NOT_FOUND = HTTPException(status_code=404, detail="Task 를 찾을 수 없습니
 # 기한 초과의 기준(BR-3)은 _is_overdue 와 같아야 한다. 내 Task 만 고르는 조건은 호출하는 쪽의 WHERE 이다. (R-009)
 LIST_ORDER = """
     ORDER BY
-        (due_date IS NOT NULL AND due_date < :today AND status != 'DONE') DESC,
+        (due_date IS NOT NULL AND due_date < %(today)s AND status != 'DONE') DESC,
         CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END,
         due_date IS NULL,
         due_date,
@@ -43,7 +43,7 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
-def _is_overdue(row: sqlite3.Row, today: date) -> bool:
+def _is_overdue(row: dict, today: date) -> bool:
     """마감일이 오늘보다 이전이고 완료가 아니면 기한 초과이다. 당일은 아니다. 저장하지 않고 계산한다. (BR-3)"""
     due_date = row["due_date"]
     return (
@@ -53,11 +53,11 @@ def _is_overdue(row: sqlite3.Row, today: date) -> bool:
     )
 
 
-def _to_task(row: sqlite3.Row, today: date) -> Task:
+def _to_task(row: dict, today: date) -> Task:
     return Task(**row, is_overdue=_is_overdue(row, today))
 
 
-def _ai_task(row: sqlite3.Row, today: date) -> dict:
+def _ai_task(row: dict, today: date) -> dict:
     """AI 에 보낼 Task 한 건. 프롬프트가 due_date 를 YYYY-MM-DD 또는 null 로 약속하므로,
     DB 에 규칙 밖 글이 들어 있으면 마감일이 없는 것으로 보내고 기한 초과도 아니라고 한다."""
     try:
@@ -76,7 +76,7 @@ def _ai_task(row: sqlite3.Row, today: date) -> dict:
 @router.get("", response_model=list[Task])
 def list_tasks(conn: Conn, user: CurrentUser, today: Today) -> list[Task]:
     rows = conn.execute(
-        f"SELECT * FROM tasks WHERE owner_id = :owner_id {LIST_ORDER}",
+        f"SELECT * FROM tasks WHERE owner_id = %(owner_id)s {LIST_ORDER}",
         {"owner_id": user.id, "today": today.isoformat()},
     ).fetchall()
     return [_to_task(row, today) for row in rows]
@@ -101,18 +101,18 @@ def briefing_tasks(conn: Conn, user: CurrentUser, today: Today) -> Briefing:
     # 내 끝나지 않은 할 일만 모아 보내고 고른 결과만 돌려준다. 저장소는 읽기만 한다. (R-009)
     rows = conn.execute(
         f"SELECT id, title, priority, due_date, status FROM tasks"
-        f" WHERE owner_id = :owner_id AND status != 'DONE' {LIST_ORDER}",
+        f" WHERE owner_id = %(owner_id)s AND status != 'DONE' {LIST_ORDER}",
         {"owner_id": user.id, "today": today.isoformat()},
     ).fetchall()
     tasks = [_ai_task(row, today) for row in rows]
     return ai.briefing(tasks, today)
 
 
-def _weekplan_tasks(conn: sqlite3.Connection, owner_id: int, today: date) -> list[dict]:
+def _weekplan_tasks(conn: psycopg.Connection, owner_id: int, today: date) -> list[dict]:
     """주간 계획에 보낼 내 끝나지 않은 할 일. 설명은 읽지 않는다."""
     rows = conn.execute(
         f"SELECT id, title, priority, due_date, status FROM tasks"
-        f" WHERE owner_id = :owner_id AND status != 'DONE' {LIST_ORDER}",
+        f" WHERE owner_id = %(owner_id)s AND status != 'DONE' {LIST_ORDER}",
         {"owner_id": owner_id, "today": today.isoformat()},
     ).fetchall()
     return [_ai_task(row, today) for row in rows]
@@ -136,11 +136,11 @@ def command_tasks(
 def create_task(body: TaskCreate, conn: Conn, user: CurrentUser, today: Today) -> Task:
     # 주인은 요청에서 받지 않고 로그인한 사용자로 정한다.
     now = _now()
-    with conn:
+    with conn.transaction():
         cur = conn.execute(
             "INSERT INTO tasks"
             " (title, description, status, priority, due_date, created_at, updated_at, owner_id)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (
                 body.title,
                 body.description,
@@ -152,7 +152,8 @@ def create_task(body: TaskCreate, conn: Conn, user: CurrentUser, today: Today) -
                 user.id,
             ),
         )
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (cur.lastrowid,)).fetchone()
+        task_id = cur.fetchone()["id"]
+    row = conn.execute("SELECT * FROM tasks WHERE id = %s", (task_id,)).fetchone()
     return _to_task(row, today)
 
 
@@ -166,23 +167,23 @@ def update_task(
         name: value.value if isinstance(value, StrEnum) else value
         for name, value in body.model_dump(exclude_unset=True).items()
     }
-    assignments = ", ".join(f"{name} = ?" for name in changes)
-    with conn:
+    assignments = ", ".join(f"{name} = %s" for name in changes)
+    with conn.transaction():
         cur = conn.execute(
-            f"UPDATE tasks SET {assignments}, updated_at = ? WHERE id = ? AND owner_id = ?",
+            f"UPDATE tasks SET {assignments}, updated_at = %s WHERE id = %s AND owner_id = %s",
             (*changes.values(), _now(), task_id, user.id),
         )
     if cur.rowcount == 0:
         raise NOT_FOUND
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    row = conn.execute("SELECT * FROM tasks WHERE id = %s", (task_id,)).fetchone()
     return _to_task(row, today)
 
 
 @router.delete("/{task_id}", status_code=204)
 def delete_task(task_id: int, conn: Conn, user: CurrentUser) -> None:
-    with conn:
+    with conn.transaction():
         cur = conn.execute(
-            "DELETE FROM tasks WHERE id = ? AND owner_id = ?", (task_id, user.id)
+            "DELETE FROM tasks WHERE id = %s AND owner_id = %s", (task_id, user.id)
         )
     if cur.rowcount == 0:
         raise NOT_FOUND
