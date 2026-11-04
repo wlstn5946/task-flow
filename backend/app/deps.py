@@ -1,14 +1,14 @@
-import sqlite3
 from datetime import date
 from typing import Annotated
 
+import psycopg
 from fastapi import Cookie, Depends, HTTPException
 
 from app.db import get_conn
 from app.models import User
 from app.security import SESSION_COOKIE, now_iso, session_key
 
-Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
+Conn = Annotated[psycopg.Connection, Depends(get_conn)]
 
 
 def current_user(
@@ -21,7 +21,7 @@ def current_user(
         raise unauthorized
     row = conn.execute(
         "SELECT users.id, users.username, sessions.expires_at FROM sessions"
-        " JOIN users ON users.id = sessions.user_id WHERE sessions.id = ?",
+        " JOIN users ON users.id = sessions.user_id WHERE sessions.id = %s",
         (session_key(session),),
     ).fetchone()
     if row is None or row["expires_at"] <= now_iso():

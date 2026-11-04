@@ -1,15 +1,14 @@
 import json
-import sqlite3
 from datetime import date
 from types import SimpleNamespace
 
 import anthropic
 import httpx2
+import pgtest
 import pytest
 from fastapi.testclient import TestClient
 
 from app import ai
-from app.db import db_path, migrate
 from app.deps import get_today
 from app.main import app
 
@@ -37,10 +36,9 @@ def fake_key(monkeypatch):
 
 
 @pytest.fixture
-def db(tmp_path, monkeypatch):
-    monkeypatch.setenv("TASKFLOW_DB", str(tmp_path / "test.db"))
+def db(monkeypatch):
+    pgtest.use_test_db(monkeypatch)
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    migrate()
 
 
 @pytest.fixture
@@ -97,11 +95,8 @@ def status_error(cls, status, message="error"):
 
 
 def snapshot():
-    conn = sqlite3.connect(db_path())
-    try:
+    with pgtest.connect() as conn:
         return conn.execute("SELECT * FROM tasks ORDER BY id").fetchall()
-    finally:
-        conn.close()
 
 
 def add(c, title, status="TODO", priority="NORMAL", due_date=None, description=""):
@@ -572,13 +567,7 @@ def test_api_error_logs_kind_and_status_only(client, monkeypatch, caplog, three)
 
 def set_raw_due_date(task_id, value):
     """API 를 거치지 않고 DB 에 마감일을 직접 쓴다. CHECK 가 통과시키는 규칙 밖 글을 만들기 위해서이다."""
-    conn = sqlite3.connect(db_path())
-    try:
-        conn.execute("PRAGMA ignore_check_constraints=ON")
-        conn.execute("UPDATE tasks SET due_date = ? WHERE id = ?", (value, task_id))
-        conn.commit()
-    finally:
-        conn.close()
+    pgtest.set_raw_due_date(task_id, value)
 
 
 @pytest.mark.parametrize("bad", ["다음주", "10/20", "2026-02-30", "2026-10-21T09:00:00", ""])

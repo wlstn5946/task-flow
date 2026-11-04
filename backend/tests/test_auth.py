@@ -1,17 +1,14 @@
-import sqlite3
-
+import pgtest
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import db_path, migrate
 from app.main import app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("TASKFLOW_DB", str(tmp_path / "auth.db"))
+def client(monkeypatch):
+    pgtest.use_test_db(monkeypatch)
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    migrate()
     with TestClient(app) as c:
         yield c
 
@@ -57,8 +54,8 @@ def test_register_invalid_input_is_422(client, body):
 
 def test_password_is_stored_as_argon2_hash(client):
     register(client)
-    with sqlite3.connect(db_path()) as conn:
-        (stored,) = conn.execute("SELECT password_hash FROM users").fetchone()
+    with pgtest.connect() as conn:
+        stored = conn.execute("SELECT password_hash FROM users").fetchone()["password_hash"]
     assert stored.startswith("$argon2")
     assert "password1" not in stored
 
@@ -88,8 +85,8 @@ def test_session_value_is_not_stored_as_is(client):
     register(client)
     login(client)
     token = client.cookies["session"]
-    with sqlite3.connect(db_path()) as conn:
-        (stored,) = conn.execute("SELECT id FROM sessions").fetchone()
+    with pgtest.connect() as conn:
+        stored = conn.execute("SELECT id FROM sessions").fetchone()["id"]
     assert stored != token
 
 
@@ -98,8 +95,8 @@ def test_logout_ends_session(client):
     login(client)
     assert client.post("/auth/logout").status_code == 204
     assert client.get("/auth/me").status_code == 401
-    with sqlite3.connect(db_path()) as conn:
-        assert conn.execute("SELECT count(*) FROM sessions").fetchone() == (0,)
+    with pgtest.connect() as conn:
+        assert conn.execute("SELECT count(*) FROM sessions").fetchone()["count"] == 0
 
 
 def test_logout_requires_login(client):
@@ -109,7 +106,7 @@ def test_logout_requires_login(client):
 def test_expired_session_is_401(client):
     register(client)
     login(client)
-    with sqlite3.connect(db_path()) as conn:
+    with pgtest.connect() as conn:
         conn.execute("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000+00:00'")
     assert client.get("/auth/me").status_code == 401
 

@@ -1,6 +1,6 @@
-import sqlite3
 from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Response
 
 from app.deps import Conn, CurrentUser
@@ -23,14 +23,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(body: Registration, conn: Conn) -> User:
     # 가입해도 로그인된 상태가 되지 않는다. 따로 login 한다. (D-016)
     try:
-        with conn:
+        with conn.transaction():
             cur = conn.execute(
-                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                "INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
                 (body.username, hash_password(body.password)),
             )
-    except sqlite3.IntegrityError:
+            user_id = cur.fetchone()["id"]
+    except psycopg.errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="이미 쓰는 아이디입니다.") from None
-    return User(id=cur.lastrowid, username=body.username)
+    return User(id=user_id, username=body.username)
 
 
 @router.post("/login", response_model=User)
@@ -41,7 +42,7 @@ def login(
     old_session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
 ) -> User:
     row = conn.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        "SELECT id, username, password_hash FROM users WHERE username = %s",
         (body.username.strip().lower(),),
     ).fetchone()
     # 아이디가 없는 경우와 비밀번호가 틀린 경우를 같은 응답으로 준다.
@@ -50,12 +51,12 @@ def login(
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 맞지 않습니다.")
 
     token = new_session_token()
-    with conn:
-        conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now_iso(),))
+    with conn.transaction():
+        conn.execute("DELETE FROM sessions WHERE expires_at <= %s", (now_iso(),))
         if old_session:
-            conn.execute("DELETE FROM sessions WHERE id = ?", (session_key(old_session),))
+            conn.execute("DELETE FROM sessions WHERE id = %s", (session_key(old_session),))
         conn.execute(
-            "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
+            "INSERT INTO sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
             (session_key(token), row["id"], now_iso(SESSION_LIFETIME)),
         )
     response.set_cookie(
@@ -75,8 +76,8 @@ def logout(
     response: Response,
     session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
 ) -> None:
-    with conn:
-        conn.execute("DELETE FROM sessions WHERE id = ?", (session_key(session or ""),))
+    with conn.transaction():
+        conn.execute("DELETE FROM sessions WHERE id = %s", (session_key(session or ""),))
     response.delete_cookie(SESSION_COOKIE)
 
 
