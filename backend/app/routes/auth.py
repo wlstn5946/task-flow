@@ -19,8 +19,8 @@ from app.security import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=User, status_code=201)
-def register(body: Registration, conn: Conn) -> User:
+@router.post("/signup", response_model=User, status_code=201)
+def signup(body: Registration, conn: Conn) -> User:
     # 가입해도 로그인된 상태가 되지 않는다. 따로 login 한다. (D-016)
     try:
         with conn.transaction():

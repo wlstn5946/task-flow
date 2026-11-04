@@ -25,7 +25,7 @@ def fixed_today():
 
 def sign_up_and_log_in(client, username):
     creds = {"username": username, "password": "password1"}
-    assert client.post("/auth/register", json=creds).status_code == 201
+    assert client.post("/auth/signup", json=creds).status_code == 201
     assert client.post("/auth/login", json=creds).status_code == 200
 
 
