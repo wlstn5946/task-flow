@@ -1,15 +1,14 @@
 import json
-import sqlite3
 from datetime import date
 from types import SimpleNamespace
 
 import anthropic
 import httpx2
+import pgtest
 import pytest
 from fastapi.testclient import TestClient
 
 from app import ai
-from app.db import db_path, migrate
 from app.deps import get_today
 from app.main import app
 
@@ -35,10 +34,9 @@ def fake_key(monkeypatch):
 
 
 @pytest.fixture
-def db(tmp_path, monkeypatch):
-    monkeypatch.setenv("TASKFLOW_DB", str(tmp_path / "test.db"))
+def db(monkeypatch):
+    pgtest.use_test_db(monkeypatch)
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    migrate()
 
 
 @pytest.fixture
@@ -103,11 +101,8 @@ def status_error(cls, status, message="error"):
 
 
 def snapshot():
-    conn = sqlite3.connect(db_path())
-    try:
+    with pgtest.connect() as conn:
         return conn.execute("SELECT * FROM tasks ORDER BY id").fetchall()
-    finally:
-        conn.close()
 
 
 def generate(client, **overrides):

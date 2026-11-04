@@ -1,10 +1,9 @@
-import sqlite3
 from datetime import date, timedelta
 
+import pgtest
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import db_path, migrate
 from app.deps import get_today
 from app.main import app
 
@@ -31,10 +30,9 @@ def sign_up_and_log_in(client, username):
 
 
 @pytest.fixture
-def db(tmp_path, monkeypatch):
-    monkeypatch.setenv("TASKFLOW_DB", str(tmp_path / "test.db"))
+def db(monkeypatch):
+    pgtest.use_test_db(monkeypatch)
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    migrate()
 
 
 @pytest.fixture
@@ -301,13 +299,11 @@ def test_patch_new_fields_updates_updated_at(client, monkeypatch):
 
 def test_legacy_row_without_new_values_lists_as_normal_without_due_date(client):
     # 마이그레이션 전에 있던 행은 새 열이 기본값이다. 목록 전체가 오류가 되면 안 된다.
-    conn = sqlite3.connect(db_path())
-    with conn:
+    with pgtest.connect() as conn:
         conn.execute(
             "INSERT INTO tasks (title, description, status, created_at, updated_at, owner_id)"
             " VALUES ('옛 카드', '', 'TODO', 't', 't', 1)"
         )
-    conn.close()
     task = client.get("/tasks").json()[0]
     assert (task["priority"], task["due_date"], task["is_overdue"]) == ("NORMAL", None, False)
 
