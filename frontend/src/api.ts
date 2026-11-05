@@ -5,6 +5,7 @@ import type {
   GeneratedTasks,
   GenerateRequest,
   NewTask,
+  Priority,
   Status,
   SuggestRequest,
   Suggestion,
@@ -86,8 +87,13 @@ export function fetchMe(): Promise<User> {
   return request<User>('/auth/me')
 }
 
-export function listTasks(): Promise<Task[]> {
-  return request<Task[]>('/tasks')
+/** 검색어와 우선순위는 선택이다. 빈 값은 보내지 않으므로 둘 다 비면 전체 목록이다. (R-013) */
+export function listTasks(params: { q?: string; priority?: Priority | '' } = {}): Promise<Task[]> {
+  const query = new URLSearchParams()
+  if (params.q) query.set('q', params.q)
+  if (params.priority) query.set('priority', params.priority)
+  const text = query.toString()
+  return request<Task[]>(text ? `/tasks?${text}` : '/tasks')
 }
 
 export function createTask(task: NewTask): Promise<Task> {
