@@ -12,6 +12,7 @@ from app.models import (
     CommandResult,
     GenerateRequest,
     GeneratedTasks,
+    Priority,
     Status,
     SuggestRequest,
     Suggestion,
@@ -74,10 +75,33 @@ def _ai_task(row: dict, today: date) -> dict:
 
 
 @router.get("", response_model=list[Task])
-def list_tasks(conn: Conn, user: CurrentUser, today: Today) -> list[Task]:
+def list_tasks(
+    conn: Conn,
+    user: CurrentUser,
+    today: Today,
+    q: str | None = None,
+    priority: str | None = None,
+) -> list[Task]:
+    # 검색어와 우선순위는 선택이다. 둘 다 없으면 내 Task 전부이다. (R-013, D-023)
+    params = {"owner_id": user.id, "today": today.isoformat()}
+    conditions = ""
+    if priority is not None:
+        try:
+            params["priority"] = Priority(priority).value
+        except ValueError:
+            raise HTTPException(status_code=422, detail="우선순위는 LOW · NORMAL · HIGH 중 하나여야 합니다.")
+        conditions += " AND priority = %(priority)s"
+    if q is not None:
+        # 검색어 안의 \ % _ 는 일반 문자로 찾는다. 값은 자리표시로만 넘긴다.
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        params["pattern"] = f"%{escaped}%"
+        conditions += (
+            " AND (title ILIKE %(pattern)s ESCAPE '\\'"
+            " OR description ILIKE %(pattern)s ESCAPE '\\')"
+        )
     rows = conn.execute(
-        f"SELECT * FROM tasks WHERE owner_id = %(owner_id)s {LIST_ORDER}",
-        {"owner_id": user.id, "today": today.isoformat()},
+        f"SELECT * FROM tasks WHERE owner_id = %(owner_id)s{conditions} {LIST_ORDER}",
+        params,
     ).fetchall()
     return [_to_task(row, today) for row in rows]
 
