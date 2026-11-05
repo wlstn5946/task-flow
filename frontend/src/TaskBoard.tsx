@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ApiError,
   createTask,
@@ -12,6 +12,7 @@ import { Board } from './components/Board'
 import { BriefingButton } from './components/BriefingButton'
 import { BriefingCard } from './components/BriefingCard'
 import { CommandBar } from './components/CommandBar'
+import { NO_CRITERIA, SearchBar, hasCriteria, type SearchCriteria } from './components/SearchBar'
 import { useBriefing } from './hooks/useBriefing'
 import { WeekPlanButton } from './components/WeekPlanButton'
 import { WeekPlanCard } from './components/WeekPlanCard'
@@ -42,6 +43,9 @@ function TaskBoard({ user, onLoggedOut }: Props) {
   const [deleting, setDeleting] = useState<Task | null>(null)
   const [actionError, setActionError] = useState('')
   const [loadState, setLoadState] = useState<LoadState>('loading')
+  // 검색 결과는 전체 목록(tasks)과 따로 둔다. 브리핑 · 시키기 · 주간 계획은 전체 목록을 쓴다. (R-013)
+  const [results, setResults] = useState<Task[] | null>(null)
+  const criteriaRef = useRef<SearchCriteria>(NO_CRITERIA)
   const briefing = useBriefing()
   const weekPlan = useWeekPlan()
 
@@ -74,10 +78,43 @@ function TaskBoard({ user, onLoggedOut }: Props) {
 
   // 정렬과 기한 초과는 서버가 정한다. 바꾼 뒤에는 서버 순서를 다시 받아 온다. (R-012)
   // 실패해도 이미 반영한 내용은 그대로 두고 다음에 불러올 때 맞춰진다.
+  // 검색 조건이 있으면 같은 조건으로 결과도 다시 받는다.
   function refreshOrder() {
     listTasks()
       .then(setTasks)
       .catch(() => {})
+    if (hasCriteria(criteriaRef.current)) {
+      listTasks(criteriaRef.current)
+        .then(setResults)
+        .catch(() => {})
+    }
+  }
+
+  async function handleSearch(criteria: SearchCriteria) {
+    if (!hasCriteria(criteria)) {
+      handleClearSearch()
+      return
+    }
+    try {
+      const found = await listTasks(criteria)
+      criteriaRef.current = criteria
+      setResults(found)
+      setActionError('')
+    } catch {
+      setActionError('검색하지 못했습니다. 다시 시도해 주세요.')
+    }
+  }
+
+  function handleClearSearch() {
+    criteriaRef.current = NO_CRITERIA
+    setResults(null)
+    setActionError('')
+  }
+
+  function replaceTask(updated: Task) {
+    const swap = (list: Task[]) => list.map((t) => (t.id === updated.id ? updated : t))
+    setTasks(swap)
+    setResults((prev) => (prev ? swap(prev) : prev))
   }
 
   async function handleCreate(task: NewTask) {
@@ -127,7 +164,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
     }
     // 서버가 확인해 돌려준 Task 로만 화면을 바꾼다. 실패하면 창에서 안내한다.
     const updated = await updateTask(task.id, changes)
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+    replaceTask(updated)
     setEditing(null)
     refreshOrder()
   }
@@ -135,7 +172,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
   async function handleChangeStatus(id: number, status: Status) {
     try {
       const updated = await updateTaskStatus(id, status)
-      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      replaceTask(updated)
       setActionError('')
       refreshOrder()
     } catch {
@@ -148,6 +185,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
     try {
       await deleteTask(task.id)
       setTasks((prev) => prev.filter((t) => t.id !== task.id))
+      setResults((prev) => (prev ? prev.filter((t) => t.id !== task.id) : prev))
       setActionError('')
     } catch {
       setActionError('삭제하지 못했습니다. 다시 시도해 주세요.')
@@ -205,6 +243,12 @@ function TaskBoard({ user, onLoggedOut }: Props) {
         </p>
       )}
       <CommandBar tasks={tasks} disabled={loadState !== 'ready'} onApplied={refreshOrder} />
+      <SearchBar
+        disabled={loadState !== 'ready'}
+        resultCount={results === null ? null : results.length}
+        onSearch={handleSearch}
+        onClear={handleClearSearch}
+      />
       {actionError && <p className="error">{actionError}</p>}
       {loadState === 'loading' && <p role="status">불러오는 중...</p>}
       {loadState === 'failed' && (
@@ -215,7 +259,7 @@ function TaskBoard({ user, onLoggedOut }: Props) {
           </button>
         </div>
       )}
-      {loadState === 'ready' && <Board tasks={tasks} actions={actions} />}
+      {loadState === 'ready' && <Board tasks={results ?? tasks} actions={actions} />}
       {creating && (
         <TaskDialog
           onCancel={() => setCreating(false)}
